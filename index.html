@@ -22,23 +22,30 @@ body{
   display:flex;
   flex-direction:column;
   align-items:center;
-  padding:20px 16px 10px;
+  padding:0 16px 10px;
 }
 
 h1{
   font-size:15px;
   letter-spacing:3px;
   font-weight:700;
-  margin-bottom:16px;
+  padding:16px 0 12px;
+  margin-bottom:14px;
   border-bottom:2px solid var(--fg);
-  padding-bottom:5px;
 }
 
-/* ---------- stage ---------- */
+/* ---------- липкий холст ---------- */
 #stageWrap{
+  position:sticky;
+  top:0;
+  z-index:20;
   width:100%;
   display:flex;
   justify-content:center;
+  background:var(--bg);
+  padding:8px 0 10px;
+  border-bottom:2px solid var(--fg);
+  margin-bottom:2px;
 }
 #stage{
   position:relative;
@@ -61,7 +68,7 @@ h1{
   justify-content:center;
   font-size:11px;
   letter-spacing:1px;
-  background:rgba(230,230,230,.82);
+  background:rgba(230,230,230,.8);
   z-index:9;
 }
 #drop{
@@ -92,30 +99,44 @@ canvas#viewCanvas{
   font-size:10px;
   opacity:.5;
   text-align:center;
-  margin-top:8px;
+  margin-top:10px;
   letter-spacing:.4px;
   max-width:560px;
   line-height:1.6;
 }
 
-/* ---------- panel ---------- */
+/* ---------- панель ---------- */
 #panel{
   width:100%;
   max-width:560px;
-  margin-top:16px;
+  margin-top:14px;
   display:flex;
   flex-direction:column;
-  gap:0;
 }
 
 .global{
   display:flex;
   gap:8px;
-  margin-bottom:14px;
+  margin-bottom:12px;
   flex-wrap:wrap;
 }
-.global button{
-  flex:1 1 auto;
+.global button{flex:1 1 auto;}
+
+.dotrow{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:0 0 12px 8px;
+  border-bottom:2px solid var(--fg);
+  margin-bottom:2px;
+  transition:opacity .15s;
+}
+.dotrow.off{opacity:.3;pointer-events:none;}
+.dotrow .lbl{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:1px;
+  flex:0 0 52px;
 }
 
 .chan{
@@ -125,9 +146,8 @@ canvas#viewCanvas{
   flex-direction:column;
   gap:7px;
 }
-.chan:last-of-type{border-bottom:2px solid var(--fg);}
-.chan.active{box-shadow:inset 4px 0 0 var(--fg);}
 .chan.off{opacity:.42;}
+.chan.active{box-shadow:inset 4px 0 0 var(--fg);}
 
 .chead{
   display:flex;
@@ -209,7 +229,7 @@ input[type=range]::-moz-range-thumb{
   border:none;
 }
 
-/* ---------- buttons ---------- */
+/* ---------- кнопки ---------- */
 .actions{
   display:flex;
   gap:8px;
@@ -262,6 +282,7 @@ input[type=file]{display:none;}
     <canvas id="viewCanvas"></canvas>
   </div>
 </div>
+
 <div id="hint2d">ползунки x / y / ⟳ двигают и крутят слой. активный слой можно ещё и таскать пальцем по фото</div>
 
 <input type="file" id="fileInput" accept="image/*">
@@ -271,6 +292,12 @@ input[type=file]{display:none;}
   <div class="global">
     <button class="sec" id="modeBtn">режим: multiply</button>
     <button class="sec" id="halftoneBtn">офсет: выкл</button>
+  </div>
+
+  <div class="dotrow off" id="dotRow">
+    <span class="lbl">точка</span>
+    <input type="range" id="dotSize" min="0" max="100" step="1" value="36">
+    <span class="vv" id="dotVal">147</span>
   </div>
 
   <div class="chan" data-ch="C">
@@ -330,24 +357,27 @@ input[type=file]{display:none;}
   'use strict';
 
   var CHANNELS = ['C','M','Y','K'];
-  var NAMES = {C:'cyan', M:'magenta', Y:'yellow', K:'black'};
   var MAX_PREVIEW_SIDE = 1400;
   var MAX_EXPORT_SIDE  = 4500;
   var SLIDER_MAX       = 200;
 
   /* ---------- элементы ---------- */
-  var stage      = document.getElementById('stage');
-  var dropEl     = document.getElementById('drop');
-  var fileInput  = document.getElementById('fileInput');
-  var viewCanvas = document.getElementById('viewCanvas');
-  var outCanvas  = document.getElementById('outCanvas');
-  var vctx       = viewCanvas.getContext('2d');
-  var octx       = outCanvas.getContext('2d');
+  var stage       = document.getElementById('stage');
+  var stageWrap   = document.getElementById('stageWrap');
+  var dropEl      = document.getElementById('drop');
+  var fileInput   = document.getElementById('fileInput');
+  var viewCanvas  = document.getElementById('viewCanvas');
+  var outCanvas   = document.getElementById('outCanvas');
+  var vctx        = viewCanvas.getContext('2d');
+  var octx        = outCanvas.getContext('2d');
   var downloadBtn = document.getElementById('downloadBtn');
   var resetBtn    = document.getElementById('resetBtn');
   var newImgBtn   = document.getElementById('newImgBtn');
   var modeBtn     = document.getElementById('modeBtn');
   var halftoneBtn = document.getElementById('halftoneBtn');
+  var dotRow      = document.getElementById('dotRow');
+  var dotSize     = document.getElementById('dotSize');
+  var dotVal      = document.getElementById('dotVal');
 
   /* ---------- состояние ---------- */
   var state = {
@@ -361,34 +391,36 @@ input[type=file]{display:none;}
   var halftoneOn = false;
   var activeCh   = 'C';
 
-  var srcImg   = null;
+  var srcImg = null;
   var W = 0, H = 0;              // размер превью
   var fullW = 0, fullH = 0;      // размер оригинала
-  var layers   = null;           // {C,M,Y,K} canvas в размере превью
-  var rafPending = false;
+  var smoothLayers = null;       // {C,M,Y,K} без растра
+  var dotLayers    = null;       // {C,M,Y,K} с растром
+  var layers       = null;       // то, что сейчас рисуется
+  var cells        = 147;        // ячеек растра по длинной стороне
+  var rafPending   = false;
+  var dotTimer     = null;
 
   /* ---------- таблица растровых точек ----------
-     Круглая точка в центре ячейки. Порог = (π/2)·r², где r — расстояние,
-     нормированное так, что r=1 в углу ячейки. Тогда доля закрашенной
-     площади ячейки точно равна покрытию краской: площадь круга радиуса R
-     в нормированных координатах есть (π/2)·R². Сверено численно:
-     погрешность < 0.1% при любом покрытии. Выше 50% — берём инверсию
-     (светлое «кольцо» вместо точки), так офсет и работает. */
+     Порог = π·r², где r — расстояние от центра ячейки, нормированное так,
+     что r=1 в углу. Доля закрашенной площади тогда ровно равна покрытию
+     краской (площадь круга в нормированных координатах = π·r²), а выше
+     50% точка превращается в «кольцо» — инверсией. Сверено численно:
+     погрешность < 0.15% во всём диапазоне. */
   var NT = 120;
-  var DOT_K = Math.PI;
   var DOT_TAB = (function(){
     var t = new Float32Array(NT*NT);
     for (var j=0;j<NT;j++){
       for (var i=0;i<NT;i++){
         var u = (i+0.5)/NT - 0.5;
         var v = (j+0.5)/NT - 0.5;
-        var r = Math.sqrt(u*u + v*v);
-        t[j*NT+i] = Math.min(1, DOT_K * r * r);
+        t[j*NT+i] = Math.min(1, Math.PI * (u*u + v*v));
       }
     }
     return t;
   })();
 
+  /* углы растров как в типографии — иначе каналы дают муар */
   var ANGLES = {C:15, M:75, Y:0, K:45};
   var GEO = {};
   CHANNELS.forEach(function(k){
@@ -396,7 +428,7 @@ input[type=file]{display:none;}
     GEO[k] = {ca: Math.cos(a), sa: Math.sin(a)};
   });
 
-  /* ---------- UI-хелперы ---------- */
+  /* ---------- UI ---------- */
   function sliderOf(ch, axis){
     return document.querySelector('input[data-ch="'+ch+'"][data-axis="'+axis+'"]');
   }
@@ -421,7 +453,7 @@ input[type=file]{display:none;}
     });
   }
 
-  function syncSlidersFromState(ch){
+  function syncSliders(ch){
     var s = state[ch];
     sliderOf(ch,'x').value   = s.x;
     sliderOf(ch,'y').value   = s.y;
@@ -429,7 +461,9 @@ input[type=file]{display:none;}
     paintValues(ch);
   }
 
-  /* ---------- раскладка превью ---------- */
+  /* ---------- размер холста ----------
+     Высота ограничена долей окна: холст липкий, и под ним всегда должно
+     оставаться место для ползунков. */
   function layoutStage(){
     if (!W || !H){
       stage.style.width = '';
@@ -437,8 +471,8 @@ input[type=file]{display:none;}
       stage.style.aspectRatio = '1 / 1';
       return;
     }
-    var maxW = Math.min(window.innerWidth - 32, 560);
-    var maxH = Math.round(window.innerHeight * 0.60);
+    var maxW = Math.min(window.innerWidth - 36, 560);
+    var maxH = Math.round(window.innerHeight * 0.46);
     var dw = maxW;
     var dh = dw * H / W;
     if (dh > maxH){
@@ -451,7 +485,7 @@ input[type=file]{display:none;}
   }
 
   /* ---------- построение слоёв ---------- */
-  function buildLayers(w, h){
+  function buildLayers(w, h, withDots){
     var src = document.createElement('canvas');
     src.width = w;
     src.height = h;
@@ -466,82 +500,70 @@ input[type=file]{display:none;}
       Y: new Uint8ClampedArray(n*4),
       K: new Uint8ClampedArray(n*4)
     };
-
-    var dots   = halftoneOn;
-    /* шаг растра привязан к размеру изображения: ~150 ячеек по длинной
-       стороне. Так плотность точек на экране и на экспорте совпадает. */
-    var period = Math.max(4, Math.max(w, h) / 150);
-    var mul    = (mode === 'multiply');
-    var tab    = DOT_TAB;
-    var gC = GEO.C, gM = GEO.M, gY = GEO.Y, gK = GEO.K;
-
     var aC = arr.C, aM = arr.M, aY = arr.Y, aK = arr.K;
+
+    var mul  = (mode === 'multiply');
+    /* шаг растра: cells ячеек по длинной стороне */
+    var period = Math.max(2.5, Math.max(w, h) / cells);
+    var tab  = DOT_TAB;
+    var gC = GEO.C, gM = GEO.M, gY = GEO.Y, gK = GEO.K;
+    var dots = withDots;
 
     for (var y=0; y<h; y++){
       for (var x=0; x<w; x++){
-        var i = y*w + x;
-        var p = i*4;
+        var p = (y*w + x)*4;
         var r = data[p], g = data[p+1], b = data[p+2], al = data[p+3];
         var rf = r/255, gf = g/255, bf = b/255;
-        /* Компоненты зависят от режима.
-           multiply — «краска на бумаге»: k = 1 - max(r,g,b), c = (1-r-k)/(1-k).
-           screen   — «свет на чёрном»: берём ту же раскладку, но от
-           инвертированного цвета, что сводится к k = min(r,g,b) и
-           c = (r-k)/(1-k). Так стопка из четырёх слоёв в режиме screen
-           собирается обратно в исходный пиксель. */
-        var c, m, yv;
-        var kk;
+        var kk, c, m, yv;
+
         if (mul){
           kk = 1 - Math.max(rf, gf, bf);
-          if (kk >= 0.9999){ c = 0; m = 0; yv = 0; }
+          if (kk >= 0.9999){ c=0; m=0; yv=0; }
           else {
-            var invA = 1 - kk;
-            c  = (1 - rf - kk) / invA;
-            m  = (1 - gf - kk) / invA;
-            yv = (1 - bf - kk) / invA;
+            var i1 = 1 - kk;
+            c  = (1 - rf - kk)/i1;
+            m  = (1 - gf - kk)/i1;
+            yv = (1 - bf - kk)/i1;
           }
         } else {
           kk = Math.min(rf, gf, bf);
-          if (kk >= 0.9999){ c = 0; m = 0; yv = 0; }
+          if (kk >= 0.9999){ c=0; m=0; yv=0; }
           else {
-            var invB = 1 - kk;
-            c  = (rf - kk) / invB;
-            m  = (gf - kk) / invB;
-            yv = (bf - kk) / invB;
+            var i2 = 1 - kk;
+            c  = (rf - kk)/i2;
+            m  = (gf - kk)/i2;
+            yv = (bf - kk)/i2;
           }
         }
 
         var inkC = true, inkM = true, inkY = true, inkK = true;
 
         if (dots){
-          /* порог для каждого канала — свой угол растра;
-             выше 50% покрытия точка превращается в «кольцо» (инверсия) */
-          var fuC = (x*gC.ca + y*gC.sa)/period; fuC -= Math.floor(fuC);
-          var fvC = (-x*gC.sa + y*gC.ca)/period; fvC -= Math.floor(fvC);
-          var thC = tab[((fvC*NT)|0)*NT + ((fuC*NT)|0)];
-          inkC = (c <= 0.5) ? (c > thC) : !((1 - c) > thC);
+          var fu, fv, th;
+          fu = (x*gC.ca + y*gC.sa)/period; fu -= Math.floor(fu);
+          fv = (-x*gC.sa + y*gC.ca)/period; fv -= Math.floor(fv);
+          th = tab[((fv*NT)|0)*NT + ((fu*NT)|0)];
+          inkC = (c <= 0.5) ? (c > th) : !((1 - c) > th);
 
-          var fuM = (x*gM.ca + y*gM.sa)/period; fuM -= Math.floor(fuM);
-          var fvM = (-x*gM.sa + y*gM.ca)/period; fvM -= Math.floor(fvM);
-          var thM = tab[((fvM*NT)|0)*NT + ((fuM*NT)|0)];
-          inkM = (m <= 0.5) ? (m > thM) : !((1 - m) > thM);
+          fu = (x*gM.ca + y*gM.sa)/period; fu -= Math.floor(fu);
+          fv = (-x*gM.sa + y*gM.ca)/period; fv -= Math.floor(fv);
+          th = tab[((fv*NT)|0)*NT + ((fu*NT)|0)];
+          inkM = (m <= 0.5) ? (m > th) : !((1 - m) > th);
 
-          var fuY = (x*gY.ca + y*gY.sa)/period; fuY -= Math.floor(fuY);
-          var fvY = (-x*gY.sa + y*gY.ca)/period; fvY -= Math.floor(fvY);
-          var thY = tab[((fvY*NT)|0)*NT + ((fuY*NT)|0)];
-          inkY = (yv <= 0.5) ? (yv > thY) : !((1 - yv) > thY);
+          fu = (x*gY.ca + y*gY.sa)/period; fu -= Math.floor(fu);
+          fv = (-x*gY.sa + y*gY.ca)/period; fv -= Math.floor(fv);
+          th = tab[((fv*NT)|0)*NT + ((fu*NT)|0)];
+          inkY = (yv <= 0.5) ? (yv > th) : !((1 - yv) > th);
 
-          var fuK = (x*gK.ca + y*gK.sa)/period; fuK -= Math.floor(fuK);
-          var fvK = (-x*gK.sa + y*gK.ca)/period; fvK -= Math.floor(fvK);
-          var thK = tab[((fvK*NT)|0)*NT + ((fuK*NT)|0)];
-          inkK = (kk <= 0.5) ? (kk > thK) : !((1 - kk) > thK);
+          fu = (x*gK.ca + y*gK.sa)/period; fu -= Math.floor(fu);
+          fv = (-x*gK.sa + y*gK.ca)/period; fv -= Math.floor(fv);
+          th = tab[((fv*NT)|0)*NT + ((fu*NT)|0)];
+          inkK = (kk <= 0.5) ? (kk > th) : !((1 - kk) > th);
         }
 
         if (mul){
-          /* краска на белой бумаге: белый холст, подкрашенный своей краской.
-             В растровом режиме точка — ПОЛНАЯ краска (тон задаётся площадью
-             точки), иначе изображение выцветает: среднее по ячейке должно
-             оставаться равным исходному тону. */
+          /* точка — полная краска, тон задаёт её площадь.
+             Полутон краской = 255*(1-доля), а в растре 0. */
           var cC = dots ? 0 : Math.round(255*(1-c));
           var cM = dots ? 0 : Math.round(255*(1-m));
           var cY = dots ? 0 : Math.round(255*(1-yv));
@@ -551,15 +573,14 @@ input[type=file]{display:none;}
           aY[p]   = 255; aY[p+1] = 255; aY[p+2] = inkY ? cY : 255; aY[p+3] = al;
           aK[p]   = inkK ? cK : 255; aK[p+1] = inkK ? cK : 255; aK[p+2] = inkK ? cK : 255; aK[p+3] = al;
         } else {
-          /* свечение на чёрном: чистый цвет канала */
           var dC = dots ? 255 : Math.round(255*c);
           var dM = dots ? 255 : Math.round(255*m);
           var dY = dots ? 255 : Math.round(255*yv);
           var dK = dots ? 255 : Math.round(255*kk);
-          aC[p]   = inkC ? dC : 0; aC[p+1] = 0;                 aC[p+2] = 0; aC[p+3] = al;
-          aM[p]   = 0;             aM[p+1] = inkM ? dM : 0;     aM[p+2] = 0; aM[p+3] = al;
-          aY[p]   = 0;             aY[p+1] = 0;                 aY[p+2] = inkY ? dY : 0; aY[p+3] = al;
-          aK[p]   = inkK ? dK : 0; aK[p+1] = inkK ? dK : 0;     aK[p+2] = inkK ? dK : 0; aK[p+3] = al;
+          aC[p]   = inkC ? dC : 0; aC[p+1] = 0;             aC[p+2] = 0; aC[p+3] = al;
+          aM[p]   = 0;             aM[p+1] = inkM ? dM : 0; aM[p+2] = 0; aM[p+3] = al;
+          aY[p]   = 0;             aY[p+1] = 0;             aY[p+2] = inkY ? dY : 0; aY[p+3] = al;
+          aK[p]   = inkK ? dK : 0; aK[p+1] = inkK ? dK : 0; aK[p+2] = inkK ? dK : 0; aK[p+3] = al;
         }
       }
     }
@@ -616,23 +637,55 @@ input[type=file]{display:none;}
     });
   }
 
-  /* ---------- пересборка слоёв (смена режима / растра / фото) ---------- */
-  function rebuildAsync(){
+  /* ---------- пересборка ---------- */
+  function busy(on){
+    stage.classList.toggle('busy', !!on);
+  }
+
+  function rebuildSmooth(){
     if (!srcImg) return;
-    stage.classList.add('busy');
+    busy(true);
     requestAnimationFrame(function(){
       requestAnimationFrame(function(){
         try {
-          layers = buildLayers(W, H);
-          draw();
-        } finally {
-          stage.classList.remove('busy');
-        }
+          smoothLayers = buildLayers(W, H, false);
+          if (!halftoneOn){ layers = smoothLayers; draw(); }
+        } finally { busy(false); }
       });
     });
   }
 
-  /* ---------- ползунки ---------- */
+  function rebuildDots(){
+    if (!srcImg) return;
+    if (!halftoneOn){
+      layers = smoothLayers;
+      scheduleDraw();
+      return;
+    }
+    busy(true);
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        try {
+          dotLayers = buildLayers(W, H, true);
+          layers = dotLayers;
+          draw();
+        } finally { busy(false); }
+      });
+    });
+  }
+
+  /* смена размера точки: пересобираем только растр, с задержкой,
+     чтобы не пересчитывать на каждый пиксель движения ползунка */
+  function scheduleDotRebuild(){
+    if (!halftoneOn || !srcImg) return;
+    if (dotTimer) clearTimeout(dotTimer);
+    dotTimer = setTimeout(function(){
+      dotTimer = null;
+      rebuildDots();
+    }, 90);
+  }
+
+  /* ---------- ползунки каналов ---------- */
   CHANNELS.forEach(function(ch){
     ['x','y','rot'].forEach(function(axis){
       var el = sliderOf(ch, axis);
@@ -646,7 +699,6 @@ input[type=file]{display:none;}
       el.addEventListener('focus', function(){ setActive(ch); });
     });
 
-    /* переключатель канала */
     var tg = document.querySelector('[data-tg="'+ch+'"]');
     tg.addEventListener('click', function(){
       state[ch].on = !state[ch].on;
@@ -660,6 +712,24 @@ input[type=file]{display:none;}
     chanEl(ch).addEventListener('pointerdown', function(){ setActive(ch); });
   });
 
+  /* ---------- размер точки ----------
+     Ползунок задаёт «крупность»; число ячеек по длинной стороне
+     считается по логарифму, чтобы мелкие точки менялись плавно. */
+  function cellsFromSlider(v){
+    var s = v/100;
+    var lo = Math.log(400), hi = Math.log(25);
+    return Math.round(Math.exp(lo + s*(hi - lo)));
+  }
+  function paintDotVal(){
+    cells = cellsFromSlider(parseFloat(dotSize.value));
+    dotVal.textContent = cells;
+  }
+  dotSize.addEventListener('input', function(){
+    paintDotVal();
+    scheduleDotRebuild();
+  });
+  paintDotVal();
+
   /* ---------- перетаскивание активного слоя ---------- */
   var dragging = false, lastX = 0, lastY = 0;
 
@@ -667,7 +737,6 @@ input[type=file]{display:none;}
     if (e.touches && e.touches[0]) return {x:e.touches[0].clientX, y:e.touches[0].clientY};
     return {x:e.clientX, y:e.clientY};
   }
-
   function clamp(v){ return Math.max(-SLIDER_MAX, Math.min(SLIDER_MAX, v)); }
 
   function onDown(e){
@@ -678,7 +747,6 @@ input[type=file]{display:none;}
     lastX = p.x; lastY = p.y;
     e.preventDefault();
   }
-
   function onMove(e){
     if (!dragging || !layers) return;
     var p = pointFrom(e);
@@ -696,7 +764,6 @@ input[type=file]{display:none;}
     scheduleDraw();
     e.preventDefault();
   }
-
   function onUp(){
     dragging = false;
     stage.classList.remove('dragging');
@@ -713,13 +780,15 @@ input[type=file]{display:none;}
   modeBtn.addEventListener('click', function(){
     mode = (mode === 'multiply') ? 'screen' : 'multiply';
     modeBtn.textContent = 'режим: ' + mode;
-    rebuildAsync();
+    rebuildSmooth();
+    if (halftoneOn) rebuildDots();
   });
 
   halftoneBtn.addEventListener('click', function(){
     halftoneOn = !halftoneOn;
     halftoneBtn.textContent = 'офсет: ' + (halftoneOn ? 'вкл' : 'выкл');
-    rebuildAsync();
+    dotRow.classList.toggle('off', !halftoneOn);
+    rebuildDots();
   });
 
   resetBtn.addEventListener('click', function(){
@@ -732,12 +801,12 @@ input[type=file]{display:none;}
       tg.classList.add('on');
       tg.setAttribute('aria-pressed','true');
       chanEl(ch).classList.remove('off');
-      syncSlidersFromState(ch);
+      syncSliders(ch);
     });
     scheduleDraw();
   });
 
-  /* ---------- загрузка фото ---------- */
+  /* ---------- загрузка ---------- */
   function loadFile(file){
     if (!file || !file.type || file.type.indexOf('image/') !== 0) return;
     var url = URL.createObjectURL(file);
@@ -758,7 +827,9 @@ input[type=file]{display:none;}
       dropEl.classList.add('hidden');
       downloadBtn.disabled = false;
       resetBtn.click();
-      rebuildAsync();
+      layers = null;
+      rebuildSmooth();
+      if (halftoneOn) rebuildDots();
       URL.revokeObjectURL(url);
     };
     img.onerror = function(){ URL.revokeObjectURL(url); };
@@ -787,19 +858,18 @@ input[type=file]{display:none;}
       ew = Math.round(ew * s2);
       eh = Math.round(eh * s2);
     }
-    var s = ew / W;   // сдвиги заданы в пикселях превью — масштабируем
+    var s = ew / W;
 
-    var prevLayers = layers;
+    var prev = layers;
     var btnText = downloadBtn.textContent;
     downloadBtn.disabled = true;
     downloadBtn.textContent = 'готовлю…';
-    stage.classList.add('busy');
+    busy(true);
 
     requestAnimationFrame(function(){
       requestAnimationFrame(function(){
-        var full = null;
         try {
-          full = buildLayers(ew, eh);
+          layers = buildLayers(ew, eh, halftoneOn);
           outCanvas.width  = ew;
           outCanvas.height = eh;
           renderTo(octx, ew, eh, s);
@@ -816,10 +886,10 @@ input[type=file]{display:none;}
             }
           }, 'image/png');
         } finally {
-          layers = prevLayers;
+          layers = prev;
           outCanvas.width = 0;
           outCanvas.height = 0;
-          stage.classList.remove('busy');
+          busy(false);
           downloadBtn.disabled = false;
           downloadBtn.textContent = btnText;
           scheduleDraw();
@@ -830,12 +900,12 @@ input[type=file]{display:none;}
 
   /* ---------- старт ---------- */
   setActive('C');
-  CHANNELS.forEach(syncSlidersFromState);
+  CHANNELS.forEach(syncSliders);
 
-  var rAF = null;
+  var rTimer = null;
   window.addEventListener('resize', function(){
-    if (rAF) clearTimeout(rAF);
-    rAF = setTimeout(layoutStage, 120);
+    if (rTimer) clearTimeout(rTimer);
+    rTimer = setTimeout(layoutStage, 120);
   });
 
 })();

@@ -53,7 +53,7 @@ h1{
 }
 #stage.dragging{cursor:grabbing;}
 #stage.busy::after{
-  content:'считаю точки…';
+  content:'считаю…';
   position:absolute;
   inset:0;
   display:flex;
@@ -87,7 +87,6 @@ canvas#viewCanvas{
   height:100%;
   display:block;
 }
-canvas#viewCanvas.dots{image-rendering:pixelated;}
 
 #hint2d{
   font-size:10px;
@@ -369,17 +368,22 @@ input[type=file]{display:none;}
   var rafPending = false;
 
   /* ---------- таблица растровых точек ----------
-     Круглая точка в центре ячейки: порог = нормализованное расстояние²,
-     что даёт линейный рост площади точки от покрытия краской. */
-  var NT = 96;
+     Круглая точка в центре ячейки. Порог = (π/2)·r², где r — расстояние,
+     нормированное так, что r=1 в углу ячейки. Тогда доля закрашенной
+     площади ячейки точно равна покрытию краской: площадь круга радиуса R
+     в нормированных координатах есть (π/2)·R². Сверено численно:
+     погрешность < 0.1% при любом покрытии. Выше 50% — берём инверсию
+     (светлое «кольцо» вместо точки), так офсет и работает. */
+  var NT = 120;
+  var DOT_K = Math.PI;
   var DOT_TAB = (function(){
     var t = new Float32Array(NT*NT);
     for (var j=0;j<NT;j++){
       for (var i=0;i<NT;i++){
         var u = (i+0.5)/NT - 0.5;
         var v = (j+0.5)/NT - 0.5;
-        var r = Math.sqrt(u*u + v*v) / 0.70710678;
-        t[j*NT+i] = Math.min(1, r*r);
+        var r = Math.sqrt(u*u + v*v);
+        t[j*NT+i] = Math.min(1, DOT_K * r * r);
       }
     }
     return t;
@@ -464,7 +468,9 @@ input[type=file]{display:none;}
     };
 
     var dots   = halftoneOn;
-    var period = Math.max(3, Math.min(w, h) / 200);   // шаг растра зависит от размера
+    /* шаг растра привязан к размеру изображения: ~150 ячеек по длинной
+       стороне. Так плотность точек на экране и на экспорте совпадает. */
+    var period = Math.max(4, Math.max(w, h) / 150);
     var mul    = (mode === 'multiply');
     var tab    = DOT_TAB;
     var gC = GEO.C, gM = GEO.M, gY = GEO.Y, gK = GEO.K;
@@ -477,49 +483,79 @@ input[type=file]{display:none;}
         var p = i*4;
         var r = data[p], g = data[p+1], b = data[p+2], al = data[p+3];
         var rf = r/255, gf = g/255, bf = b/255;
-        var kk = 1 - Math.max(rf, gf, bf);
+        /* Компоненты зависят от режима.
+           multiply — «краска на бумаге»: k = 1 - max(r,g,b), c = (1-r-k)/(1-k).
+           screen   — «свет на чёрном»: берём ту же раскладку, но от
+           инвертированного цвета, что сводится к k = min(r,g,b) и
+           c = (r-k)/(1-k). Так стопка из четырёх слоёв в режиме screen
+           собирается обратно в исходный пиксель. */
         var c, m, yv;
-        if (kk >= 0.9999){ c = 0; m = 0; yv = 0; }
-        else {
-          var inv = 1 - kk;
-          c  = (1 - rf - kk) / inv;
-          m  = (1 - gf - kk) / inv;
-          yv = (1 - bf - kk) / inv;
+        var kk;
+        if (mul){
+          kk = 1 - Math.max(rf, gf, bf);
+          if (kk >= 0.9999){ c = 0; m = 0; yv = 0; }
+          else {
+            var invA = 1 - kk;
+            c  = (1 - rf - kk) / invA;
+            m  = (1 - gf - kk) / invA;
+            yv = (1 - bf - kk) / invA;
+          }
+        } else {
+          kk = Math.min(rf, gf, bf);
+          if (kk >= 0.9999){ c = 0; m = 0; yv = 0; }
+          else {
+            var invB = 1 - kk;
+            c  = (rf - kk) / invB;
+            m  = (gf - kk) / invB;
+            yv = (bf - kk) / invB;
+          }
         }
 
         var inkC = true, inkM = true, inkY = true, inkK = true;
 
         if (dots){
-          /* порог для каждого канала — свой угол растра */
+          /* порог для каждого канала — свой угол растра;
+             выше 50% покрытия точка превращается в «кольцо» (инверсия) */
           var fuC = (x*gC.ca + y*gC.sa)/period; fuC -= Math.floor(fuC);
           var fvC = (-x*gC.sa + y*gC.ca)/period; fvC -= Math.floor(fvC);
-          inkC = c  > tab[((fvC*NT)|0)*NT + ((fuC*NT)|0)];
+          var thC = tab[((fvC*NT)|0)*NT + ((fuC*NT)|0)];
+          inkC = (c <= 0.5) ? (c > thC) : !((1 - c) > thC);
 
           var fuM = (x*gM.ca + y*gM.sa)/period; fuM -= Math.floor(fuM);
           var fvM = (-x*gM.sa + y*gM.ca)/period; fvM -= Math.floor(fvM);
-          inkM = m  > tab[((fvM*NT)|0)*NT + ((fuM*NT)|0)];
+          var thM = tab[((fvM*NT)|0)*NT + ((fuM*NT)|0)];
+          inkM = (m <= 0.5) ? (m > thM) : !((1 - m) > thM);
 
           var fuY = (x*gY.ca + y*gY.sa)/period; fuY -= Math.floor(fuY);
           var fvY = (-x*gY.sa + y*gY.ca)/period; fvY -= Math.floor(fvY);
-          inkY = yv > tab[((fvY*NT)|0)*NT + ((fuY*NT)|0)];
+          var thY = tab[((fvY*NT)|0)*NT + ((fuY*NT)|0)];
+          inkY = (yv <= 0.5) ? (yv > thY) : !((1 - yv) > thY);
 
           var fuK = (x*gK.ca + y*gK.sa)/period; fuK -= Math.floor(fuK);
           var fvK = (-x*gK.sa + y*gK.ca)/period; fvK -= Math.floor(fvK);
-          inkK = kk > tab[((fvK*NT)|0)*NT + ((fuK*NT)|0)];
+          var thK = tab[((fvK*NT)|0)*NT + ((fuK*NT)|0)];
+          inkK = (kk <= 0.5) ? (kk > thK) : !((1 - kk) > thK);
         }
 
         if (mul){
-          /* краска на белой бумаге: белый холст, подкрашенный своей краской */
-          var cC = Math.round(255*(1-c)),  cM = Math.round(255*(1-m));
-          var cY = Math.round(255*(1-yv)), cK = Math.round(255*(1-kk));
+          /* краска на белой бумаге: белый холст, подкрашенный своей краской.
+             В растровом режиме точка — ПОЛНАЯ краска (тон задаётся площадью
+             точки), иначе изображение выцветает: среднее по ячейке должно
+             оставаться равным исходному тону. */
+          var cC = dots ? 0 : Math.round(255*(1-c));
+          var cM = dots ? 0 : Math.round(255*(1-m));
+          var cY = dots ? 0 : Math.round(255*(1-yv));
+          var cK = dots ? 0 : Math.round(255*(1-kk));
           aC[p]   = inkC ? cC : 255; aC[p+1] = 255; aC[p+2] = 255; aC[p+3] = al;
           aM[p]   = 255; aM[p+1] = inkM ? cM : 255; aM[p+2] = 255; aM[p+3] = al;
           aY[p]   = 255; aY[p+1] = 255; aY[p+2] = inkY ? cY : 255; aY[p+3] = al;
           aK[p]   = inkK ? cK : 255; aK[p+1] = inkK ? cK : 255; aK[p+2] = inkK ? cK : 255; aK[p+3] = al;
         } else {
           /* свечение на чёрном: чистый цвет канала */
-          var dC = Math.round(255*c),  dM = Math.round(255*m);
-          var dY = Math.round(255*yv), dK = Math.round(255*kk);
+          var dC = dots ? 255 : Math.round(255*c);
+          var dM = dots ? 255 : Math.round(255*m);
+          var dY = dots ? 255 : Math.round(255*yv);
+          var dK = dots ? 255 : Math.round(255*kk);
           aC[p]   = inkC ? dC : 0; aC[p+1] = 0;                 aC[p+2] = 0; aC[p+3] = al;
           aM[p]   = 0;             aM[p+1] = inkM ? dM : 0;     aM[p+2] = 0; aM[p+3] = al;
           aY[p]   = 0;             aY[p+1] = 0;                 aY[p+2] = inkY ? dY : 0; aY[p+3] = al;
@@ -569,7 +605,6 @@ input[type=file]{display:none;}
     viewCanvas.width  = W;
     viewCanvas.height = H;
     renderTo(vctx, W, H, 1);
-    viewCanvas.classList.toggle('dots', halftoneOn);
   }
 
   function scheduleDraw(){

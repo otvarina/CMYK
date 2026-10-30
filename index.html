@@ -3,273 +3,115 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>cmyk</title>
+<title>cmyk video</title>
 <style>
-:root{
-  --bg:#E6E6E6;
-  --fg:#1B1B1F;
-}
+:root{ --bg:#E6E6E6; --fg:#1B1B1F; }
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{
-  background:var(--bg);
-  color:var(--fg);
+  background:var(--bg); color:var(--fg);
   font-family:'Helvetica Neue', Arial, sans-serif;
   text-transform:lowercase;
   -webkit-tap-highlight-color:transparent;
 }
-body{
-  min-height:100vh;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  padding:0 16px 10px;
-}
+body{ min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:0 16px 10px; }
+h1{ font-size:15px; letter-spacing:3px; font-weight:700; padding:16px 0 12px; margin-bottom:12px; border-bottom:2px solid var(--fg); }
 
-h1{
-  font-size:15px;
-  letter-spacing:3px;
-  font-weight:700;
-  padding:16px 0 12px;
-  margin-bottom:14px;
-  border-bottom:2px solid var(--fg);
-}
-
-/* ---------- липкий холст ---------- */
 #stageWrap{
-  position:sticky;
-  top:0;
-  z-index:20;
-  width:100%;
-  display:flex;
-  justify-content:center;
-  background:var(--bg);
-  padding:8px 0 10px;
+  position:sticky; top:0; z-index:20; width:100%;
+  display:flex; justify-content:center;
+  background:var(--bg); padding:8px 0 10px;
   border-bottom:2px solid var(--fg);
-  margin-bottom:2px;
 }
 #stage{
-  position:relative;
-  border:2px solid var(--fg);
-  background:var(--bg);
-  overflow:hidden;
-  touch-action:none;
-  cursor:grab;
-  width:100%;
-  max-width:560px;
-  aspect-ratio:1/1;
+  position:relative; border:2px solid var(--fg); background:var(--bg);
+  overflow:hidden; touch-action:none; cursor:grab;
+  width:100%; max-width:640px; aspect-ratio:16/9;
 }
 #stage.dragging{cursor:grabbing;}
 #stage.busy::after{
-  content:'считаю…';
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:11px;
-  letter-spacing:1px;
-  background:rgba(230,230,230,.8);
-  z-index:9;
+  content:attr(data-msg);
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:11px; letter-spacing:1px; background:rgba(230,230,230,.86); z-index:9;
+  text-align:center; padding:12px;
 }
 #drop{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  font-size:13px;
-  letter-spacing:1px;
-  padding:20px;
-  cursor:pointer;
-  border:2px dashed var(--fg);
-  z-index:5;
-  line-height:1.7;
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  text-align:center; font-size:13px; letter-spacing:1px; padding:20px;
+  cursor:pointer; border:2px dashed var(--fg); z-index:5; line-height:1.7;
 }
 #drop.hidden{display:none;}
-canvas#viewCanvas{
-  position:absolute;
-  top:0;left:0;
-  width:100%;
-  height:100%;
-  display:block;
-}
+canvas#view{ position:absolute; top:0; left:0; width:100%; height:100%; display:block; }
 
-#hint2d{
-  font-size:10px;
-  opacity:.5;
-  text-align:center;
-  margin-top:10px;
-  letter-spacing:.4px;
-  max-width:560px;
-  line-height:1.6;
-}
+#panel{ width:100%; max-width:640px; margin-top:12px; display:flex; flex-direction:column; }
 
-/* ---------- панель ---------- */
-#panel{
-  width:100%;
-  max-width:560px;
-  margin-top:14px;
-  display:flex;
-  flex-direction:column;
-}
+.row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.row.wrap{ flex-wrap:wrap; }
+.lbl{ font-size:10px; letter-spacing:1px; opacity:.65; flex:0 0 auto; }
 
-.global{
-  display:flex;
-  gap:8px;
-  margin-bottom:12px;
-  flex-wrap:wrap;
+select{
+  background:var(--bg); color:var(--fg); border:2px solid var(--fg);
+  font-family:inherit; font-size:11px; font-weight:700; letter-spacing:1px;
+  padding:7px 6px; border-radius:0; text-transform:lowercase; cursor:pointer;
+  -webkit-appearance:none; appearance:none;
 }
-.global button{flex:1 1 auto;}
+button{
+  background:var(--fg); color:var(--bg); border:2px solid var(--fg);
+  padding:10px 8px; font-size:11px; letter-spacing:1px; font-weight:700;
+  text-transform:lowercase; cursor:pointer; font-family:inherit; border-radius:0;
+}
+button.sec{ background:var(--bg); color:var(--fg); }
+button:disabled{ opacity:.28; cursor:default; }
+button:active:not(:disabled){ opacity:.72; }
+button.on{ background:var(--fg); color:var(--bg); }
 
-.dotrow{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:0 0 12px 8px;
-  border-bottom:2px solid var(--fg);
-  margin-bottom:2px;
-  transition:opacity .15s;
+.seg{ display:flex; flex:1; }
+.seg button{ flex:1; border-right-width:0; }
+.seg button:last-child{ border-right-width:2px; }
+
+#playBtn{ flex:0 0 46px; }
+#timeOut{ font-size:10px; font-family:monospace; flex:0 0 88px; text-align:right; opacity:.75; }
+
+input[type=range]{
+  -webkit-appearance:none; appearance:none; flex:1; min-width:0;
+  height:16px; background:transparent; outline:none; cursor:pointer;
 }
-.dotrow.off{opacity:.3;pointer-events:none;}
-.dotrow .lbl{
-  font-size:11px;
-  font-weight:700;
-  letter-spacing:1px;
-  flex:0 0 52px;
+input[type=range]::-webkit-slider-runnable-track{ height:2px; background:var(--fg); }
+input[type=range]::-moz-range-track{ height:2px; background:var(--fg); }
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:14px; height:14px; margin-top:-6px;
+  background:var(--fg); border-radius:0; border:none;
+}
+input[type=range]::-moz-range-thumb{
+  width:14px; height:14px; background:var(--fg); border-radius:0; border:none;
 }
 
 .chan{
-  border-top:2px solid var(--fg);
-  padding:9px 0 10px 8px;
-  display:flex;
-  flex-direction:column;
-  gap:7px;
+  border-top:2px solid var(--fg); padding:8px 0 9px 8px;
+  display:flex; flex-direction:column; gap:6px; transition:opacity .15s;
 }
-.chan.off{opacity:.42;}
-.chan.active{box-shadow:inset 4px 0 0 var(--fg);}
-
-.chead{
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-.cname{
-  font-size:12px;
-  font-weight:700;
-  letter-spacing:1.5px;
-  flex:1;
-}
+.chan.off{ opacity:.42; }
+.chan.active{ box-shadow:inset 4px 0 0 var(--fg); }
+.chead{ display:flex; align-items:center; gap:8px; }
+.cname{ font-size:12px; font-weight:700; letter-spacing:1.5px; flex:1; }
 .tg{
-  width:20px;
-  height:20px;
-  flex:0 0 20px;
-  min-width:0;
-  padding:0;
-  background:var(--bg);
-  border:2px solid var(--fg);
-  cursor:pointer;
+  width:20px; height:20px; flex:0 0 20px; min-width:0; padding:0;
+  background:var(--bg); border:2px solid var(--fg); cursor:pointer;
 }
-.tg.on{background:var(--fg);}
+.tg.on{ background:var(--fg); }
+.sr{ display:flex; align-items:center; gap:8px; }
+.ax{ width:12px; font-size:10px; opacity:.6; flex:0 0 12px; font-family:monospace; }
+.vv{ width:34px; flex:0 0 34px; font-size:10px; text-align:right; font-family:monospace; opacity:.7; }
 
-.sr{
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-.ax{
-  width:12px;
-  font-size:10px;
-  opacity:.6;
-  flex:0 0 12px;
-  font-family:monospace;
-}
-.vv{
-  width:34px;
-  flex:0 0 34px;
-  font-size:10px;
-  text-align:right;
-  font-family:monospace;
-  opacity:.7;
-}
+.dotrow{ display:flex; align-items:center; gap:8px; padding:0 0 10px 8px; border-bottom:2px solid var(--fg); transition:opacity .15s; }
+.dotrow.off{ opacity:.3; pointer-events:none; }
+.dotrow .lbl{ flex:0 0 52px; opacity:1; font-weight:700; font-size:11px; }
 
-/* ---------- range ---------- */
-input[type=range]{
-  -webkit-appearance:none;
-  appearance:none;
-  flex:1;
-  min-width:0;
-  height:16px;
-  background:transparent;
-  outline:none;
-  cursor:pointer;
-}
-input[type=range]::-webkit-slider-runnable-track{
-  height:2px;
-  background:var(--fg);
-}
-input[type=range]::-moz-range-track{
-  height:2px;
-  background:var(--fg);
-}
-input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none;
-  width:14px;
-  height:14px;
-  margin-top:-6px;
-  background:var(--fg);
-  border-radius:0;
-  border:none;
-}
-input[type=range]::-moz-range-thumb{
-  width:14px;
-  height:14px;
-  background:var(--fg);
-  border-radius:0;
-  border:none;
-}
+.actions{ display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+.actions button{ flex:1 1 auto; }
 
-/* ---------- кнопки ---------- */
-.actions{
-  display:flex;
-  gap:8px;
-  margin-top:16px;
-  flex-wrap:wrap;
-}
-button{
-  background:var(--fg);
-  color:var(--bg);
-  border:2px solid var(--fg);
-  padding:11px 8px;
-  font-size:11px;
-  letter-spacing:1px;
-  font-weight:700;
-  text-transform:lowercase;
-  cursor:pointer;
-  font-family:inherit;
-  border-radius:0;
-}
-button.sec{
-  background:var(--bg);
-  color:var(--fg);
-}
-button:disabled{opacity:.3;cursor:default;}
-button:active:not(:disabled){opacity:.72;}
-
-footer{
-  margin-top:auto;
-  padding:26px 0 6px;
-  font-size:9px;
-  opacity:.55;
-  letter-spacing:.6px;
-}
-footer a{
-  color:inherit;
-  text-decoration:none;
-  border-bottom:1px solid currentColor;
-}
-
-input[type=file]{display:none;}
+footer{ margin-top:auto; padding:24px 0 6px; font-size:9px; opacity:.55; letter-spacing:.6px; }
+footer a{ color:inherit; text-decoration:none; border-bottom:1px solid currentColor; }
+input[type=file]{ display:none; }
 </style>
 </head>
 <body>
@@ -278,20 +120,49 @@ input[type=file]{display:none;}
 
 <div id="stageWrap">
   <div id="stage">
-    <div id="drop">загрузите фото<br>или нажмите сюда</div>
-    <canvas id="viewCanvas"></canvas>
+    <div id="drop">видео до 20 секунд<br>нажмите или перетащите</div>
+    <canvas id="view"></canvas>
   </div>
 </div>
 
-<div id="hint2d">ползунки x / y / ⟳ двигают и крутят слой. активный слой можно ещё и таскать пальцем по фото</div>
+<input type="file" id="fileInput" accept="video/*">
 
-<input type="file" id="fileInput" accept="image/*">
+<video id="src" playsinline muted preload="auto" style="display:none"></video>
 
 <div id="panel">
 
-  <div class="global">
-    <button class="sec" id="modeBtn">режим: multiply</button>
-    <button class="sec" id="halftoneBtn">офсет: выкл</button>
+  <div class="row">
+    <button id="playBtn" disabled>▶</button>
+    <input type="range" id="seek" min="0" max="1000" value="0" step="1" disabled>
+    <span id="timeOut">0.0 / 0.0</span>
+  </div>
+
+  <div class="row">
+    <span class="lbl">кадров в секунду</span>
+    <select id="fpsSel">
+      <option value="original" selected>оригинал</option>
+      <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+      <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+      <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+      <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+      <option value="13">13</option><option value="14">14</option><option value="15">15</option>
+    </select>
+    <div class="seg" id="scopeSeg">
+      <button class="sec on" id="scopeAll" disabled>всё видео</button>
+      <button class="sec" id="scopeFrame" disabled>по кадрам</button>
+    </div>
+  </div>
+
+  <div class="row" id="frameRow" style="display:none">
+    <button class="sec" id="prevBtn" style="flex:0 0 40px">◀</button>
+    <span id="frameOut" style="flex:1;text-align:center;font-size:11px;font-family:monospace;">кадр 1 / 1</span>
+    <button class="sec" id="nextBtn" style="flex:0 0 40px">▶</button>
+    <button class="sec" id="applyAllBtn" style="flex:0 0 auto">ко всем</button>
+  </div>
+
+  <div class="row">
+    <button class="sec" id="modeBtn" style="flex:1">режим: multiply</button>
+    <button class="sec" id="halftoneBtn" style="flex:1">офсет: выкл</button>
   </div>
 
   <div class="dotrow off" id="dotRow">
@@ -301,612 +172,855 @@ input[type=file]{display:none;}
   </div>
 
   <div class="chan" data-ch="C">
-    <div class="chead">
-      <span class="cname">cyan</span>
-      <button class="tg on" data-tg="C" aria-pressed="true"></button>
-    </div>
+    <div class="chead"><span class="cname">cyan</span><button class="tg on" data-tg="C" aria-pressed="true"></button></div>
     <div class="sr"><span class="ax">x</span><input type="range" data-ch="C" data-axis="x" min="-200" max="200" step="1" value="0"><span class="vv" data-vv="C-x">0</span></div>
     <div class="sr"><span class="ax">y</span><input type="range" data-ch="C" data-axis="y" min="-200" max="200" step="1" value="0"><span class="vv" data-vv="C-y">0</span></div>
     <div class="sr"><span class="ax">⟳</span><input type="range" data-ch="C" data-axis="rot" min="-45" max="45" step="0.5" value="0"><span class="vv" data-vv="C-rot">0°</span></div>
   </div>
 
   <div class="chan" data-ch="M">
-    <div class="chead">
-      <span class="cname">magenta</span>
-      <button class="tg on" data-tg="M" aria-pressed="true"></button>
-    </div>
+    <div class="chead"><span class="cname">magenta</span><button class="tg on" data-tg="M" aria-pressed="true"></button></div>
     <div class="sr"><span class="ax">x</span><input type="range" data-ch="M" data-axis="x" min="-200" max="200" step="1" value="0"><span class="vv" data-vv="M-x">0</span></div>
     <div class="sr"><span class="ax">y</span><input type="range" data-ch="M" data-axis="y" min="-200" max="200" step="1" value="0"><span class="vv" data-vv="M-y">0</span></div>
     <div class="sr"><span class="ax">⟳</span><input type="range" data-ch="M" data-axis="rot" min="-45" max="45" step="0.5" value="0"><span class="vv" data-vv="M-rot">0°</span></div>
   </div>
 
   <div class="chan" data-ch="Y">
-    <div class="chead">
-      <span class="cname">yellow</span>
-      <button class="tg on" data-tg="Y" aria-pressed="true"></button>
-    </div>
+    <div class="chead"><span class="cname">yellow</span><button class="tg on" data-tg="Y" aria-pressed="true"></button></div>
     <div class="sr"><span class="ax">x</span><input type="range" data-ch="Y" data-axis="x" min="-200" max="200" step="1" value="0"><span class="vv" data-vv="Y-x">0</span></div>
     <div class="sr"><span class="ax">y</span><input type="range" data-ch="Y" data-axis="y" min="-200" max="200" step="1" value="0"><span class="vv" data-vv="Y-y">0</span></div>
     <div class="sr"><span class="ax">⟳</span><input type="range" data-ch="Y" data-axis="rot" min="-45" max="45" step="0.5" value="0"><span class="vv" data-vv="Y-rot">0°</span></div>
   </div>
 
   <div class="chan" data-ch="K">
-    <div class="chead">
-      <span class="cname">black</span>
-      <button class="tg on" data-tg="K" aria-pressed="true"></button>
-    </div>
+    <div class="chead"><span class="cname">black</span><button class="tg on" data-tg="K" aria-pressed="true"></button></div>
     <div class="sr"><span class="ax">x</span><input type="range" data-ch="K" data-axis="x" min="-200" max="200" step="1" value="0"><span class="vv" data-vv="K-x">0</span></div>
     <div class="sr"><span class="ax">y</span><input type="range" data-ch="K" data-axis="y" min="-200" max="200" step="1" value="0"><span class="vv" data-vv="K-y">0</span></div>
     <div class="sr"><span class="ax">⟳</span><input type="range" data-ch="K" data-axis="rot" min="-45" max="45" step="0.5" value="0"><span class="vv" data-vv="K-rot">0°</span></div>
   </div>
 
   <div class="actions">
-    <button class="sec" id="resetBtn">сбросить всё</button>
-    <button class="sec" id="newImgBtn">другое фото</button>
-    <button id="downloadBtn" disabled>скачать png</button>
+    <button class="sec" id="resetBtn">сбросить</button>
+    <button class="sec" id="newBtn">другое видео</button>
+    <button id="dlBtn" disabled>скачать видео</button>
   </div>
 
 </div>
 
 <footer>автор: <a href="https://t.me/navarotvar" target="_blank" rel="noopener">ot.var</a></footer>
 
-<canvas id="outCanvas" style="display:none"></canvas>
-
 <script>
 (function(){
-  'use strict';
+'use strict';
 
-  var CHANNELS = ['C','M','Y','K'];
-  var MAX_PREVIEW_SIDE = 1400;
-  var MAX_EXPORT_SIDE  = 4500;
-  var SLIDER_MAX       = 200;
+var CH = ['C','M','Y','K'];
+var MAX_SECONDS = 20;
+var PREVIEW_SIDE = 720;
+var EXPORT_SIDE  = 1024;
+var SLIDER_MAX   = 200;
 
-  /* ---------- элементы ---------- */
-  var stage       = document.getElementById('stage');
-  var stageWrap   = document.getElementById('stageWrap');
-  var dropEl      = document.getElementById('drop');
-  var fileInput   = document.getElementById('fileInput');
-  var viewCanvas  = document.getElementById('viewCanvas');
-  var outCanvas   = document.getElementById('outCanvas');
-  var vctx        = viewCanvas.getContext('2d');
-  var octx        = outCanvas.getContext('2d');
-  var downloadBtn = document.getElementById('downloadBtn');
-  var resetBtn    = document.getElementById('resetBtn');
-  var newImgBtn   = document.getElementById('newImgBtn');
-  var modeBtn     = document.getElementById('modeBtn');
-  var halftoneBtn = document.getElementById('halftoneBtn');
-  var dotRow      = document.getElementById('dotRow');
-  var dotSize     = document.getElementById('dotSize');
-  var dotVal      = document.getElementById('dotVal');
+/* ---------- элементы ---------- */
+var stage   = document.getElementById('stage');
+var dropEl  = document.getElementById('drop');
+var fileIn  = document.getElementById('fileInput');
+var video   = document.getElementById('src');
+var view    = document.getElementById('view');
+var viewCtx = view.getContext('2d');
+var playBtn = document.getElementById('playBtn');
+var seekEl  = document.getElementById('seek');
+var timeOut = document.getElementById('timeOut');
+var fpsSel  = document.getElementById('fpsSel');
+var scopeAll= document.getElementById('scopeAll');
+var scopeFr = document.getElementById('scopeFrame');
+var frameRow= document.getElementById('frameRow');
+var prevBtn = document.getElementById('prevBtn');
+var nextBtn = document.getElementById('nextBtn');
+var applyBtn= document.getElementById('applyAllBtn');
+var frameOut= document.getElementById('frameOut');
+var modeBtn = document.getElementById('modeBtn');
+var htBtn   = document.getElementById('halftoneBtn');
+var dotRow  = document.getElementById('dotRow');
+var dotSize = document.getElementById('dotSize');
+var dotVal  = document.getElementById('dotVal');
+var resetBtn= document.getElementById('resetBtn');
+var newBtn  = document.getElementById('newBtn');
+var dlBtn   = document.getElementById('dlBtn');
 
-  /* ---------- состояние ---------- */
-  var state = {
-    C:{x:0, y:0, rot:0, on:true},
-    M:{x:0, y:0, rot:0, on:true},
-    Y:{x:0, y:0, rot:0, on:true},
-    K:{x:0, y:0, rot:0, on:true}
+/* ---------- состояние ---------- */
+function blank(){ return {C:{x:0,y:0,rot:0,on:true}, M:{x:0,y:0,rot:0,on:true}, Y:{x:0,y:0,rot:0,on:true}, K:{x:0,y:0,rot:0,on:true}}; }
+function clone(s){ var o=blank(); CH.forEach(function(k){ o[k].x=s[k].x; o[k].y=s[k].y; o[k].rot=s[k].rot; o[k].on=s[k].on; }); return o; }
+
+var globalS = blank();
+var frameMap = {};          // индекс кадра -> настройки
+var perFrame = false;
+var fpsMode = 'original';   // 'original' | число
+var mode = 'multiply';
+var halftone = false;
+var cells = 147;
+var activeCh = 'C';
+
+var duration = 0;
+var frameCount = 1;
+var curFrame = 0;
+var loaded = false;
+
+/* ---------- рабочие буферы ---------- */
+var capCanvas = document.createElement('canvas');
+var capCtx = capCanvas.getContext('2d', {willReadFrequently:true});
+var outImg = null;
+var CC = null, MM = null, YY = null, KK = null;
+var workW = 0, workH = 0;
+
+/* ---------- таблица растровых точек ----------
+   порог = π·r², r нормирован так, что r=1 в углу ячейки.
+   доля закрашенной площади тогда точно равна покрытию краской;
+   выше 50% точка превращается в «кольцо» инверсией. */
+var NT = 120;
+var TAB = (function(){
+  var t = new Float32Array(NT*NT);
+  for (var j=0;j<NT;j++) for (var i=0;i<NT;i++){
+    var u=(i+0.5)/NT-0.5, v=(j+0.5)/NT-0.5;
+    t[j*NT+i] = Math.min(1, Math.PI*(u*u+v*v));
+  }
+  return t;
+})();
+
+var ANGLES = {C:15, M:75, Y:0, K:45};
+var GEO = {};
+CH.forEach(function(k){
+  var a = ANGLES[k]*Math.PI/180;
+  GEO[k] = {ca:Math.cos(a), sa:Math.sin(a)};
+});
+
+/* ---------- компоненты по пикселю-источнику ---------- */
+function prep(src, n, mul){
+  if (!CC || CC.length !== n){
+    CC = new Float32Array(n); MM = new Float32Array(n);
+    YY = new Float32Array(n); KK = new Float32Array(n);
+  }
+  for (var i=0;i<n;i++){
+    var p = i*4;
+    var r = src[p], g = src[p+1], b = src[p+2];
+    var kk = mul ? 1 - Math.max(r,g,b)/255 : Math.min(r,g,b)/255;
+    KK[i] = kk;
+    if (kk >= 0.9999){ CC[i]=0; MM[i]=0; YY[i]=0; continue; }
+    var inv = 1 - kk;
+    var rf = r/255, gf = g/255, bf = b/255;
+    if (mul){
+      CC[i] = (1-rf-kk)/inv; MM[i] = (1-gf-kk)/inv; YY[i] = (1-bf-kk)/inv;
+    } else {
+      CC[i] = (rf-kk)/inv;   MM[i] = (gf-kk)/inv;   YY[i] = (bf-kk)/inv;
+    }
+  }
+}
+
+/* ---------- композит ----------
+   каждый канал берёт СВОЙ пиксель источника (сдвиг + поворот),
+   затем каналы складываются. multiply: 255·Π(1−e), screen: 255−255·Π(1−e).
+   нулевой сдвиг и поворот дают ровно исходную картинку. */
+function composite(out, w, h, S, mul, sc){
+  var comps = [CC, MM, YY, KK];
+  var cx = w/2, cy = h/2;
+  var period = Math.max(2.5, Math.max(w,h)/cells);
+  var ca=[0,0,0,0], sa=[0,0,0,0], dx=[0,0,0,0], dy=[0,0,0,0], on=[0,0,0,0], gca=[0,0,0,0], gsa=[0,0,0,0];
+  for (var i=0;i<4;i++){
+    var k = CH[i], st = S[k];
+    var a = st.rot*Math.PI/180;
+    ca[i]=Math.cos(a); sa[i]=Math.sin(a);
+    dx[i]=st.x*sc; dy[i]=st.y*sc; on[i]=st.on?1:0;
+    gca[i]=GEO[k].ca; gsa[i]=GEO[k].sa;
+  }
+  var o = 0;
+  for (var y=0;y<h;y++){
+    for (var x=0;x<w;x++){
+      var eC=0, eM=0, eY=0, eK=0;
+      for (var c=0;c<4;c++){
+        if (!on[c]) continue;
+        var ox = x - cx - dx[c];
+        var oy = y - cy - dy[c];
+        var sx = ca[c]*ox + sa[c]*oy + cx;
+        var sy = -sa[c]*ox + ca[c]*oy + cy;
+        if (sx < 0 || sy < 0 || sx >= w || sy >= h) continue;
+        var ui = sx|0, vi = sy|0;
+        var comp = comps[c][vi*w + ui];
+        var e;
+        if (halftone){
+          var pu = (ui*gca[c] + vi*gsa[c])/period; pu -= Math.floor(pu);
+          var pv = (-ui*gsa[c] + vi*gca[c])/period; pv -= Math.floor(pv);
+          var th = TAB[((pv*NT)|0)*NT + ((pu*NT)|0)];
+          e = (comp <= 0.5) ? (comp > th ? 1 : 0) : (((1-comp) > th) ? 0 : 1);
+        } else {
+          e = comp;
+        }
+        if (c===0) eC=e; else if (c===1) eM=e; else if (c===2) eY=e; else eK=e;
+      }
+      var fK = 1 - eK;
+      var R = 255*(1-eC)*fK;
+      var G = 255*(1-eM)*fK;
+      var B = 255*(1-eY)*fK;
+      if (!mul){ R = 255-R; G = 255-G; B = 255-B; }
+      out[o] = R; out[o+1] = G; out[o+2] = B; out[o+3] = 255;
+      o += 4;
+    }
+  }
+}
+
+/* ---------- вспомогательное ---------- */
+function isIdentity(S){
+  if (halftone) return false;
+  for (var i=0;i<4;i++){
+    var st = S[CH[i]];
+    if (!st.on || st.x !== 0 || st.y !== 0 || st.rot !== 0) return false;
+  }
+  return true;
+}
+
+function sizeFor(longSide){
+  var vw = video.videoWidth || 16, vh = video.videoHeight || 9;
+  var s = longSide / Math.max(vw, vh);
+  if (s > 1) s = 1;
+  return { w: Math.max(2, Math.round(vw*s)), h: Math.max(2, Math.round(vh*s)) };
+}
+
+function ensureTarget(ctx, canvas, w, h){
+  if (canvas.width !== w || canvas.height !== h){
+    canvas.width = w; canvas.height = h;
+    return new ImageData(w, h);
+  }
+  if (!ctx.__img || ctx.__img.width !== w || ctx.__img.height !== h){
+    ctx.__img = new ImageData(w, h);
+  }
+  return ctx.__img;
+}
+
+/* нарисовать кадр: video -> композит -> canvas */
+function renderFrameTo(ctx, canvas, w, h, S){
+  var img = ensureTarget(ctx, canvas, w, h);
+  capCanvas.width = w; capCanvas.height = h;
+  capCtx.drawImage(video, 0, 0, w, h);
+
+  if (isIdentity(S)){
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,w,h);
+    ctx.drawImage(capCanvas, 0, 0);
+    return;
+  }
+  var src = capCtx.getImageData(0,0,w,h).data;
+  prep(src, w*h, mode === 'multiply');
+  composite(img.data, w, h, S, mode === 'multiply', Math.max(w,h)/1000);
+  ctx.putImageData(img, 0, 0);
+}
+
+/* ---------- настройки кадра ---------- */
+function settingsFor(idx){
+  if (perFrame && frameMap[idx]) return frameMap[idx];
+  return globalS;
+}
+function editSettings(idx){
+  if (!perFrame) return globalS;
+  if (!frameMap[idx]) frameMap[idx] = clone(globalS);
+  return frameMap[idx];
+}
+
+/* ---------- отрисовка превью ---------- */
+var rendering = false;
+
+function drawPreview(){
+  if (!loaded || rendering) return;
+  rendering = true;
+  try {
+    var sz = sizeFor(PREVIEW_SIDE);
+    renderFrameTo(viewCtx, view, sz.w, sz.h, settingsFor(curFrame));
+  } finally { rendering = false; }
+}
+
+/* ---------- воспроизведение ---------- */
+var playing = false, rafId = null, lastKey = -1;
+
+function tick(){
+  if (!playing) return;
+  var key;
+  if (perFrame){
+    var idx = frameIndexAt(video.currentTime);
+    key = idx;
+    if (idx !== curFrame){ curFrame = idx; updateFrameUI(); }
+  } else {
+    key = video.currentTime;
+  }
+  if (key !== lastKey){ lastKey = key; drawPreview(); }
+  updateTimeUI();
+  rafId = requestAnimationFrame(tick);
+}
+
+function frameIndexAt(t){
+  if (fpsMode === 'original') return 0;
+  var f = parseFloat(fpsMode);
+  var i = Math.floor(t*f + 1e-6);
+  return Math.max(0, Math.min(frameCount-1, i));
+}
+
+function play(){
+  if (!loaded) return;
+  playing = true; lastKey = -1;
+  playBtn.textContent = '❚❚';
+  video.play().catch(function(){});
+  rafId = requestAnimationFrame(tick);
+}
+function pause(){
+  playing = false;
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = null;
+  playBtn.textContent = '▶';
+  video.pause();
+  drawPreview();
+}
+function togglePlay(){ playing ? pause() : play(); }
+
+/* ---------- UI ---------- */
+function fmt(t){
+  if (!isFinite(t)) t = 0;
+  return t.toFixed(1);
+}
+function updateTimeUI(){
+  var d = duration || 0;
+  timeOut.textContent = fmt(video.currentTime) + ' / ' + fmt(d);
+  if (!seeking) seekEl.value = d ? Math.round(video.currentTime/d*1000) : 0;
+}
+var seeking = false;
+
+function updateFrameUI(){
+  if (!perFrame){ frameRow.style.display = 'none'; return; }
+  frameRow.style.display = 'flex';
+  frameOut.textContent = 'кадр ' + (curFrame+1) + ' / ' + frameCount;
+}
+
+function paintSliders(S){
+  CH.forEach(function(k){
+    var s = S[k];
+    document.querySelector('input[data-ch="'+k+'"][data-axis="x"]').value = s.x;
+    document.querySelector('input[data-ch="'+k+'"][data-axis="y"]').value = s.y;
+    document.querySelector('input[data-ch="'+k+'"][data-axis="rot"]').value = s.rot;
+    document.querySelector('[data-vv="'+k+'-x"]').textContent = Math.round(s.x);
+    document.querySelector('[data-vv="'+k+'-y"]').textContent = Math.round(s.y);
+    document.querySelector('[data-vv="'+k+'-rot"]').textContent = (Math.round(s.rot*10)/10)+'°';
+    var tg = document.querySelector('[data-tg="'+k+'"]');
+    tg.classList.toggle('on', s.on);
+    tg.setAttribute('aria-pressed', String(!!s.on));
+    document.querySelector('.chan[data-ch="'+k+'"]').classList.toggle('off', !s.on);
+  });
+}
+
+function setActive(k){
+  activeCh = k;
+  CH.forEach(function(x){
+    document.querySelector('.chan[data-ch="'+x+'"]').classList.toggle('active', x===k);
+  });
+}
+
+/* ---------- пересчёт кадров при смене fps ---------- */
+function recomputeFrames(){
+  if (!loaded){ frameCount = 1; curFrame = 0; return; }
+  if (fpsMode === 'original'){ frameCount = 1; curFrame = 0; return; }
+  var f = parseFloat(fpsMode);
+  frameCount = Math.max(1, Math.floor(duration*f + 1e-6));
+  curFrame = frameIndexAt(video.currentTime);
+  updateFrameUI();
+}
+
+/* ---------- загрузка видео ---------- */
+var prevSrc = '', prevTime = 0, hadVideo = false;
+
+function loadFile(file){
+  if (!file || file.type.indexOf('video/') !== 0) return;
+
+  /* запоминаем, что было: если новое видео не подойдёт, вернём прежнее */
+  prevSrc  = video.src || '';
+  prevTime = video.currentTime || 0;
+  hadVideo = loaded;
+  var prevDuration = duration;
+
+  function reject(msg){
+    if (hadVideo && prevSrc){
+      video.src = prevSrc;                       // откат, иначе экспорт пойдёт по чужому файлу
+      duration = prevDuration;
+      whenFrameReady(function(){
+        video.currentTime = prevTime || 0;
+        drawPreview();
+      });
+    } else {
+      video.removeAttribute('src');
+      video.load();
+      loaded = false; started = false;
+      dlBtn.disabled = true; playBtn.disabled = true; seekEl.disabled = true;
+      viewCtx.clearRect(0,0,view.width,view.height);
+      dropEl.classList.remove('hidden');
+    }
+    toast(msg);
+  }
+
+  var url = URL.createObjectURL(file);
+  video.src = url;
+  video.load();
+
+  video.onloadedmetadata = function(){
+    if (!isFinite(video.duration)){
+      video.currentTime = 1e101;   // трюк для стримов с неизвестной длительностью
+      return;
+    }
+    settle();
+  };
+  video.ondurationchange = function(){
+    if (isFinite(video.duration) && video.duration > 0) settle();
   };
 
-  var mode       = 'multiply';   // multiply | screen
-  var halftoneOn = false;
-  var activeCh   = 'C';
+  var settled = false;
+  function settle(){
+    if (settled) return;
+    if (!isFinite(video.duration) || video.duration <= 0) return;
+    settled = true;
+    video.onloadedmetadata = null;
+    video.ondurationchange = null;
 
-  var srcImg = null;
-  var W = 0, H = 0;              // размер превью
-  var fullW = 0, fullH = 0;      // размер оригинала
-  var smoothLayers = null;       // {C,M,Y,K} без растра
-  var dotLayers    = null;       // {C,M,Y,K} с растром
-  var layers       = null;       // то, что сейчас рисуется
-  var cells        = 147;        // ячеек растра по длинной стороне
-  var rafPending   = false;
-  var dotTimer     = null;
-
-  /* ---------- таблица растровых точек ----------
-     Порог = π·r², где r — расстояние от центра ячейки, нормированное так,
-     что r=1 в углу. Доля закрашенной площади тогда ровно равна покрытию
-     краской (площадь круга в нормированных координатах = π·r²), а выше
-     50% точка превращается в «кольцо» — инверсией. Сверено численно:
-     погрешность < 0.15% во всём диапазоне. */
-  var NT = 120;
-  var DOT_TAB = (function(){
-    var t = new Float32Array(NT*NT);
-    for (var j=0;j<NT;j++){
-      for (var i=0;i<NT;i++){
-        var u = (i+0.5)/NT - 0.5;
-        var v = (j+0.5)/NT - 0.5;
-        t[j*NT+i] = Math.min(1, Math.PI * (u*u + v*v));
-      }
-    }
-    return t;
-  })();
-
-  /* углы растров как в типографии — иначе каналы дают муар */
-  var ANGLES = {C:15, M:75, Y:0, K:45};
-  var GEO = {};
-  CHANNELS.forEach(function(k){
-    var a = ANGLES[k] * Math.PI/180;
-    GEO[k] = {ca: Math.cos(a), sa: Math.sin(a)};
-  });
-
-  /* ---------- UI ---------- */
-  function sliderOf(ch, axis){
-    return document.querySelector('input[data-ch="'+ch+'"][data-axis="'+axis+'"]');
-  }
-  function valOf(ch, axis){
-    return document.querySelector('[data-vv="'+ch+'-'+axis+'"]');
-  }
-  function chanEl(ch){
-    return document.querySelector('.chan[data-ch="'+ch+'"]');
-  }
-
-  function paintValues(ch){
-    var s = state[ch];
-    valOf(ch,'x').textContent   = Math.round(s.x);
-    valOf(ch,'y').textContent   = Math.round(s.y);
-    valOf(ch,'rot').textContent = (Math.round(s.rot*10)/10) + '°';
-  }
-
-  function setActive(ch){
-    activeCh = ch;
-    CHANNELS.forEach(function(k){
-      chanEl(k).classList.toggle('active', k === ch);
-    });
-  }
-
-  function syncSliders(ch){
-    var s = state[ch];
-    sliderOf(ch,'x').value   = s.x;
-    sliderOf(ch,'y').value   = s.y;
-    sliderOf(ch,'rot').value = s.rot;
-    paintValues(ch);
-  }
-
-  /* ---------- размер холста ----------
-     Высота ограничена долей окна: холст липкий, и под ним всегда должно
-     оставаться место для ползунков. */
-  function layoutStage(){
-    if (!W || !H){
-      stage.style.width = '';
-      stage.style.height = '';
-      stage.style.aspectRatio = '1 / 1';
+    if (video.duration > MAX_SECONDS + 0.05){
+      reject('видео длиннее 20 секунд — выберите другое');
       return;
     }
-    var maxW = Math.min(window.innerWidth - 36, 560);
-    var maxH = Math.round(window.innerHeight * 0.46);
-    var dw = maxW;
-    var dh = dw * H / W;
-    if (dh > maxH){
-      dh = maxH;
-      dw = dh * W / H;
-    }
-    stage.style.aspectRatio = 'auto';
-    stage.style.width  = Math.round(dw) + 'px';
-    stage.style.height = Math.round(dh) + 'px';
+    start();
   }
+}
 
-  /* ---------- построение слоёв ---------- */
-  function buildLayers(w, h, withDots){
-    var src = document.createElement('canvas');
-    src.width = w;
-    src.height = h;
-    var sctx = src.getContext('2d', {willReadFrequently:true});
-    sctx.drawImage(srcImg, 0, 0, w, h);
-    var data = sctx.getImageData(0, 0, w, h).data;
+var started = false;
+function start(){
+  started = true;
+  duration = video.duration;
+  loaded = true;
+  dropEl.classList.add('hidden');
+  dlBtn.disabled = false;
+  playBtn.disabled = false;
+  seekEl.disabled = false;
+  scopeAll.disabled = (fpsMode === 'original');
+  scopeFr.disabled = (fpsMode === 'original');
 
-    var n = w*h;
-    var arr = {
-      C: new Uint8ClampedArray(n*4),
-      M: new Uint8ClampedArray(n*4),
-      Y: new Uint8ClampedArray(n*4),
-      K: new Uint8ClampedArray(n*4)
+  globalS = blank();
+  frameMap = {};
+  perFrame = false;
+  scopeAll.classList.add('on');
+  scopeFr.classList.remove('on');
+
+  layoutStage();
+  recomputeFrames();
+  paintSliders(globalS);
+  updateTimeUI();
+
+  /* Первый кадр может быть ещё не декодирован: drawImage вернул бы пустоту.
+     Ждём готовности, иначе на старте видно чёрный прямоугольник. */
+  whenFrameReady(function(){ drawPreview(); });
+}
+
+function whenFrameReady(cb){
+  if (video.readyState >= 2){ cb(); return; }
+  var h = function(){
+    video.removeEventListener('loadeddata', h);
+    cb();
+  };
+  video.addEventListener('loadeddata', h);
+}
+
+function layoutStage(){
+  if (!loaded){ stage.style.aspectRatio = '16 / 9'; stage.style.width = ''; stage.style.height=''; return; }
+  var ar = video.videoWidth / video.videoHeight;
+  var maxW = Math.min(window.innerWidth - 36, 640);
+  var maxH = Math.round(window.innerHeight * 0.42);
+  var w = maxW, h = w / ar;
+  if (h > maxH){ h = maxH; w = h * ar; }
+  stage.style.aspectRatio = 'auto';
+  stage.style.width = Math.round(w) + 'px';
+  stage.style.height = Math.round(h) + 'px';
+}
+
+/* ---------- события UI ---------- */
+dropEl.addEventListener('click', function(){ fileIn.click(); });
+newBtn.addEventListener('click', function(){ fileIn.click(); });
+fileIn.addEventListener('change', function(e){
+  if (e.target.files && e.target.files[0]){ started = false; loadFile(e.target.files[0]); }
+});
+stage.addEventListener('dragover', function(e){ e.preventDefault(); });
+stage.addEventListener('drop', function(e){
+  e.preventDefault();
+  var f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f){ started = false; loadFile(f); }
+});
+
+playBtn.addEventListener('click', togglePlay);
+video.addEventListener('ended', pause);
+video.addEventListener('timeupdate', function(){ if (!playing) updateTimeUI(); });
+
+seekEl.addEventListener('input', function(){
+  if (!loaded) return;
+  seeking = true;
+  var t = (parseFloat(seekEl.value)/1000) * duration;
+  video.currentTime = t;
+});
+seekEl.addEventListener('change', function(){ seeking = false; });
+
+video.addEventListener('seeked', function(){
+  if (!loaded) return;
+  if (perFrame){
+    curFrame = frameIndexAt(video.currentTime);
+    updateFrameUI();
+    paintSliders(settingsFor(curFrame));
+  }
+  updateTimeUI();
+  drawPreview();
+});
+
+fpsSel.addEventListener('change', function(){
+  fpsMode = fpsSel.value;
+  var orig = (fpsMode === 'original');
+  scopeAll.disabled = orig;
+  scopeFr.disabled = orig;
+  if (orig){
+    perFrame = false;
+    scopeAll.classList.add('on');
+    scopeFr.classList.remove('on');
+    video.pause();
+    playing = false;
+    playBtn.textContent = '▶';
+    if (rafId) cancelAnimationFrame(rafId);
+  }
+  frameMap = {};              // индексы кадров меняют смысл — сбрасываем покадровые настройки
+  recomputeFrames();
+  if (!orig && perFrame){
+    video.currentTime = curFrame / parseFloat(fpsMode);
+  }
+  paintSliders(settingsFor(curFrame));
+  drawPreview();
+});
+
+scopeAll.addEventListener('click', function(){
+  if (fpsMode === 'original') return;
+  perFrame = false;
+  scopeAll.classList.add('on');
+  scopeFr.classList.remove('on');
+  frameRow.style.display = 'none';
+  paintSliders(globalS);
+  drawPreview();
+});
+
+scopeFr.addEventListener('click', function(){
+  if (fpsMode === 'original') return;
+  perFrame = true;
+  scopeFr.classList.add('on');
+  scopeAll.classList.remove('on');
+  pause();
+  recomputeFrames();
+  video.currentTime = curFrame / parseFloat(fpsMode);
+  updateFrameUI();
+  paintSliders(settingsFor(curFrame));
+});
+
+prevBtn.addEventListener('click', function(){
+  if (!perFrame) return;
+  curFrame = Math.max(0, curFrame-1);
+  video.currentTime = curFrame / parseFloat(fpsMode);
+  updateFrameUI();
+  paintSliders(settingsFor(curFrame));
+});
+nextBtn.addEventListener('click', function(){
+  if (!perFrame) return;
+  curFrame = Math.min(frameCount-1, curFrame+1);
+  video.currentTime = curFrame / parseFloat(fpsMode);
+  updateFrameUI();
+  paintSliders(settingsFor(curFrame));
+});
+applyBtn.addEventListener('click', function(){
+  if (!perFrame) return;
+  globalS = clone(settingsFor(curFrame));
+  frameMap = {};
+  paintSliders(globalS);
+  drawPreview();
+});
+
+modeBtn.addEventListener('click', function(){
+  mode = (mode === 'multiply') ? 'screen' : 'multiply';
+  modeBtn.textContent = 'режим: ' + mode;
+  drawPreview();
+});
+
+htBtn.addEventListener('click', function(){
+  halftone = !halftone;
+  htBtn.textContent = 'офсет: ' + (halftone ? 'вкл' : 'выкл');
+  dotRow.classList.toggle('off', !halftone);
+  drawPreview();
+});
+
+function cellsFromSlider(v){
+  var s = v/100;
+  var lo = Math.log(400), hi = Math.log(25);
+  return Math.round(Math.exp(lo + s*(hi-lo)));
+}
+dotSize.addEventListener('input', function(){
+  cells = cellsFromSlider(parseFloat(dotSize.value));
+  dotVal.textContent = cells;
+  drawPreview();
+});
+cells = cellsFromSlider(parseFloat(dotSize.value));
+dotVal.textContent = cells;
+
+resetBtn.addEventListener('click', function(){
+  globalS = blank();
+  frameMap = {};
+  paintSliders(globalS);
+  drawPreview();
+});
+
+/* ---------- ползунки каналов ---------- */
+CH.forEach(function(k){
+  ['x','y','rot'].forEach(function(axis){
+    var el = document.querySelector('input[data-ch="'+k+'"][data-axis="'+axis+'"]');
+    el.addEventListener('input', function(){
+      var S = editSettings(curFrame);
+      S[k][axis] = parseFloat(el.value);
+      document.querySelector('[data-vv="'+k+'-'+axis+'"]').textContent =
+        (axis === 'rot') ? (Math.round(S[k][axis]*10)/10)+'°' : Math.round(S[k][axis]);
+      setActive(k);
+      drawPreview();
+    });
+    el.addEventListener('pointerdown', function(){ setActive(k); });
+    el.addEventListener('focus', function(){ setActive(k); });
+  });
+
+  var tg = document.querySelector('[data-tg="'+k+'"]');
+  tg.addEventListener('click', function(){
+    var S = editSettings(curFrame);
+    S[k].on = !S[k].on;
+    tg.classList.toggle('on', S[k].on);
+    tg.setAttribute('aria-pressed', String(!!S[k].on));
+    document.querySelector('.chan[data-ch="'+k+'"]').classList.toggle('off', !S[k].on);
+    setActive(k);
+    drawPreview();
+  });
+
+  document.querySelector('.chan[data-ch="'+k+'"]').addEventListener('pointerdown', function(){ setActive(k); });
+});
+
+/* ---------- перетаскивание активного канала ---------- */
+var dragging=false, lastX=0, lastY=0;
+function pt(e){
+  if (e.touches && e.touches[0]) return {x:e.touches[0].clientX, y:e.touches[0].clientY};
+  return {x:e.clientX, y:e.clientY};
+}
+function clampV(v){ return Math.max(-SLIDER_MAX, Math.min(SLIDER_MAX, v)); }
+
+function onDown(e){
+  if (!loaded) return;
+  dragging = true;
+  stage.classList.add('dragging');
+  var p = pt(e); lastX = p.x; lastY = p.y;
+  e.preventDefault();
+}
+function onMove(e){
+  if (!dragging || !loaded) return;
+  var p = pt(e);
+  var dx = p.x-lastX, dy = p.y-lastY;
+  lastX = p.x; lastY = p.y;
+  var r = stage.getBoundingClientRect();
+  var ref = Math.max(r.width, r.height);   // 1000 «единиц» = длинная сторона
+  var S = editSettings(curFrame);
+  S[activeCh].x = clampV(S[activeCh].x + dx/ref*1000);
+  S[activeCh].y = clampV(S[activeCh].y + dy/ref*1000);
+  document.querySelector('input[data-ch="'+activeCh+'"][data-axis="x"]').value = S[activeCh].x;
+  document.querySelector('input[data-ch="'+activeCh+'"][data-axis="y"]').value = S[activeCh].y;
+  document.querySelector('[data-vv="'+activeCh+'-x"]').textContent = Math.round(S[activeCh].x);
+  document.querySelector('[data-vv="'+activeCh+'-y"]').textContent = Math.round(S[activeCh].y);
+  drawPreview();
+  e.preventDefault();
+}
+function onUp(){ dragging=false; stage.classList.remove('dragging'); }
+
+stage.addEventListener('mousedown', onDown);
+window.addEventListener('mousemove', onMove);
+window.addEventListener('mouseup', onUp);
+stage.addEventListener('touchstart', onDown, {passive:false});
+window.addEventListener('touchmove', onMove, {passive:false});
+window.addEventListener('touchend', onUp);
+
+/* ---------- экспорт ---------- */
+function pickMime(){
+  var list = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4;codecs=avc1','video/mp4'];
+  for (var i=0;i<list.length;i++){
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(list[i])) return list[i];
+  }
+  return '';
+}
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+function seekTo(t){
+  return new Promise(function(res){
+    var done = false;
+    function fin(){ if (done) return; done = true; video.removeEventListener('seeked', fin); res(); }
+    video.addEventListener('seeked', fin);
+    video.currentTime = Math.min(Math.max(0, t), Math.max(0, duration - 0.001));
+    setTimeout(fin, 1200);
+  });
+}
+
+dlBtn.addEventListener('click', function(){
+  if (!loaded) return;
+  if (exporting) return;
+  if (!window.MediaRecorder || !pickMime()){
+    toast('браузер не умеет записывать видео — попробуйте в chrome или сделайте скриншот кадра');
+    return;
+  }
+  exporting = true;
+
+  var wasPlaying = playing;
+  pause();
+  dlBtn.disabled = true;
+  var oldLabel = dlBtn.textContent;
+  var orig = (fpsMode === 'original');
+  var outFps = orig ? 25 : parseFloat(fpsMode);
+  var n = Math.max(1, Math.round(duration * outFps));
+  var sz = sizeFor(EXPORT_SIDE);
+
+  var expCanvas = document.createElement('canvas');
+  expCanvas.width = sz.w; expCanvas.height = sz.h;
+  var expCtx = expCanvas.getContext('2d');
+
+  function labels(i, total){ dlBtn.textContent = i + ' / ' + total; }
+
+  /* --- оригинал: пишем в реальном времени, как играет видео.
+         так сохраняется настоящий поток и полная частота кадров --- */
+  if (orig){
+    var stream0 = expCanvas.captureStream(outFps);
+    var mime0 = pickMime();
+    var rec0 = new MediaRecorder(stream0, { mimeType: mime0, videoBitsPerSecond: 12000000 });
+    var chunks0 = [];
+    rec0.ondataavailable = function(e){ if (e.data && e.data.size) chunks0.push(e.data); };
+    var stopped0 = new Promise(function(res){ rec0.onstop = res; });
+
+    var offscreen = function(){
+      if (video.ended || video.paused) return;
+      renderFrameTo(expCtx, expCanvas, sz.w, sz.h, globalS);
+      dlBtn.textContent = fmt(video.currentTime) + ' / ' + fmt(duration);
+      requestAnimationFrame(offscreen);
     };
-    var aC = arr.C, aM = arr.M, aY = arr.Y, aK = arr.K;
 
-    var mul  = (mode === 'multiply');
-    /* шаг растра: cells ячеек по длинной стороне */
-    var period = Math.max(2.5, Math.max(w, h) / cells);
-    var tab  = DOT_TAB;
-    var gC = GEO.C, gM = GEO.M, gY = GEO.Y, gK = GEO.K;
-    var dots = withDots;
-
-    for (var y=0; y<h; y++){
-      for (var x=0; x<w; x++){
-        var p = (y*w + x)*4;
-        var r = data[p], g = data[p+1], b = data[p+2], al = data[p+3];
-        var rf = r/255, gf = g/255, bf = b/255;
-        var kk, c, m, yv;
-
-        if (mul){
-          kk = 1 - Math.max(rf, gf, bf);
-          if (kk >= 0.9999){ c=0; m=0; yv=0; }
-          else {
-            var i1 = 1 - kk;
-            c  = (1 - rf - kk)/i1;
-            m  = (1 - gf - kk)/i1;
-            yv = (1 - bf - kk)/i1;
-          }
-        } else {
-          kk = Math.min(rf, gf, bf);
-          if (kk >= 0.9999){ c=0; m=0; yv=0; }
-          else {
-            var i2 = 1 - kk;
-            c  = (rf - kk)/i2;
-            m  = (gf - kk)/i2;
-            yv = (bf - kk)/i2;
-          }
-        }
-
-        var inkC = true, inkM = true, inkY = true, inkK = true;
-
-        if (dots){
-          var fu, fv, th;
-          fu = (x*gC.ca + y*gC.sa)/period; fu -= Math.floor(fu);
-          fv = (-x*gC.sa + y*gC.ca)/period; fv -= Math.floor(fv);
-          th = tab[((fv*NT)|0)*NT + ((fu*NT)|0)];
-          inkC = (c <= 0.5) ? (c > th) : !((1 - c) > th);
-
-          fu = (x*gM.ca + y*gM.sa)/period; fu -= Math.floor(fu);
-          fv = (-x*gM.sa + y*gM.ca)/period; fv -= Math.floor(fv);
-          th = tab[((fv*NT)|0)*NT + ((fu*NT)|0)];
-          inkM = (m <= 0.5) ? (m > th) : !((1 - m) > th);
-
-          fu = (x*gY.ca + y*gY.sa)/period; fu -= Math.floor(fu);
-          fv = (-x*gY.sa + y*gY.ca)/period; fv -= Math.floor(fv);
-          th = tab[((fv*NT)|0)*NT + ((fu*NT)|0)];
-          inkY = (yv <= 0.5) ? (yv > th) : !((1 - yv) > th);
-
-          fu = (x*gK.ca + y*gK.sa)/period; fu -= Math.floor(fu);
-          fv = (-x*gK.sa + y*gK.ca)/period; fv -= Math.floor(fv);
-          th = tab[((fv*NT)|0)*NT + ((fu*NT)|0)];
-          inkK = (kk <= 0.5) ? (kk > th) : !((1 - kk) > th);
-        }
-
-        if (mul){
-          /* точка — полная краска, тон задаёт её площадь.
-             Полутон краской = 255*(1-доля), а в растре 0. */
-          var cC = dots ? 0 : Math.round(255*(1-c));
-          var cM = dots ? 0 : Math.round(255*(1-m));
-          var cY = dots ? 0 : Math.round(255*(1-yv));
-          var cK = dots ? 0 : Math.round(255*(1-kk));
-          aC[p]   = inkC ? cC : 255; aC[p+1] = 255; aC[p+2] = 255; aC[p+3] = al;
-          aM[p]   = 255; aM[p+1] = inkM ? cM : 255; aM[p+2] = 255; aM[p+3] = al;
-          aY[p]   = 255; aY[p+1] = 255; aY[p+2] = inkY ? cY : 255; aY[p+3] = al;
-          aK[p]   = inkK ? cK : 255; aK[p+1] = inkK ? cK : 255; aK[p+2] = inkK ? cK : 255; aK[p+3] = al;
-        } else {
-          var dC = dots ? 255 : Math.round(255*c);
-          var dM = dots ? 255 : Math.round(255*m);
-          var dY = dots ? 255 : Math.round(255*yv);
-          var dK = dots ? 255 : Math.round(255*kk);
-          aC[p]   = inkC ? dC : 0; aC[p+1] = 0;             aC[p+2] = 0; aC[p+3] = al;
-          aM[p]   = 0;             aM[p+1] = inkM ? dM : 0; aM[p+2] = 0; aM[p+3] = al;
-          aY[p]   = 0;             aY[p+1] = 0;             aY[p+2] = inkY ? dY : 0; aY[p+3] = al;
-          aK[p]   = inkK ? dK : 0; aK[p+1] = inkK ? dK : 0; aK[p+2] = inkK ? dK : 0; aK[p+3] = al;
-        }
-      }
-    }
-
-    var out = {};
-    CHANNELS.forEach(function(k){
-      var cv = document.createElement('canvas');
-      cv.width = w;
-      cv.height = h;
-      cv.getContext('2d').putImageData(new ImageData(arr[k], w, h), 0, 0);
-      out[k] = cv;
-    });
-    return out;
-  }
-
-  /* ---------- рендер ---------- */
-  function renderTo(ctx, w, h, s){
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = (mode === 'multiply') ? '#ffffff' : '#000000';
-    ctx.fillRect(0, 0, w, h);
-
-    var blend = (mode === 'multiply') ? 'multiply' : 'screen';
-    var cx = w/2, cy = h/2;
-
-    for (var i=0; i<CHANNELS.length; i++){
-      var k  = CHANNELS[i];
-      var st = state[k];
-      if (!st.on || !layers[k]) continue;
-      ctx.save();
-      ctx.globalCompositeOperation = blend;
-      ctx.translate(cx + st.x*s, cy + st.y*s);
-      if (st.rot) ctx.rotate(st.rot * Math.PI/180);
-      ctx.drawImage(layers[k], -cx, -cy, w, h);
-      ctx.restore();
-    }
-    ctx.setTransform(1,0,0,1,0,0);
-  }
-
-  function draw(){
-    if (!layers) return;
-    viewCanvas.width  = W;
-    viewCanvas.height = H;
-    renderTo(vctx, W, H, 1);
-  }
-
-  function scheduleDraw(){
-    if (rafPending) return;
-    rafPending = true;
-    requestAnimationFrame(function(){
-      rafPending = false;
-      draw();
-    });
-  }
-
-  /* ---------- пересборка ---------- */
-  function busy(on){
-    stage.classList.toggle('busy', !!on);
-  }
-
-  function rebuildSmooth(){
-    if (!srcImg) return;
-    busy(true);
-    requestAnimationFrame(function(){
-      requestAnimationFrame(function(){
-        try {
-          smoothLayers = buildLayers(W, H, false);
-          if (!halftoneOn){ layers = smoothLayers; draw(); }
-        } finally { busy(false); }
+    seekTo(0).then(function(){
+      rec0.start();
+      video.currentTime = 0;
+      video.play().catch(function(){});
+      requestAnimationFrame(offscreen);
+      return new Promise(function(res){
+        var onEnd = function(){ video.removeEventListener('ended', onEnd); res(); };
+        video.addEventListener('ended', onEnd);
+        setTimeout(function(){ video.removeEventListener('ended', onEnd); res(); }, (duration+2)*1000);
       });
-    });
-  }
+    }).then(function(){
+      video.pause();
+      return sleep(300);
+    }).then(function(){
+      rec0.stop();
+      return stopped0;
+    }).then(function(){
+      saveBlob(new Blob(chunks0, {type:mime0}), mime0);
+    }).catch(function(e){
+      toast('не получилось: ' + (e && e.message ? e.message : e));
+    }).then(finish);
 
-  function rebuildDots(){
-    if (!srcImg) return;
-    if (!halftoneOn){
-      layers = smoothLayers;
-      scheduleDraw();
-      return;
+    function finish(){
+      exporting = false;
+      dlBtn.disabled = false;
+      dlBtn.textContent = oldLabel;
+      seekTo(0).then(function(){ drawPreview(); if (wasPlaying) play(); });
     }
-    busy(true);
-    requestAnimationFrame(function(){
-      requestAnimationFrame(function(){
-        try {
-          dotLayers = buildLayers(W, H, true);
-          layers = dotLayers;
-          draw();
-        } finally { busy(false); }
+    return;
+  }
+
+  /* --- 1..15 к/с: покадрово, детерминированно --- */
+  var blobs = [];
+  function step(){
+    var i = 0;
+    function next(){
+      if (i >= n) return Promise.resolve();
+      var t = i / outFps;
+      return seekTo(t).then(function(){
+        renderFrameTo(expCtx, expCanvas, sz.w, sz.h, settingsFor(perFrame ? frameIndexAt(t) : 0));
+        return new Promise(function(res){
+          expCanvas.toBlob(function(b){ blobs.push(b); res(); }, 'image/png');
+        });
+      }).then(function(){
+        i++; labels(i, n);
+        return next();
       });
-    });
-  }
-
-  /* смена размера точки: пересобираем только растр, с задержкой,
-     чтобы не пересчитывать на каждый пиксель движения ползунка */
-  function scheduleDotRebuild(){
-    if (!halftoneOn || !srcImg) return;
-    if (dotTimer) clearTimeout(dotTimer);
-    dotTimer = setTimeout(function(){
-      dotTimer = null;
-      rebuildDots();
-    }, 90);
-  }
-
-  /* ---------- ползунки каналов ---------- */
-  CHANNELS.forEach(function(ch){
-    ['x','y','rot'].forEach(function(axis){
-      var el = sliderOf(ch, axis);
-      el.addEventListener('input', function(){
-        state[ch][axis] = parseFloat(el.value);
-        paintValues(ch);
-        setActive(ch);
-        scheduleDraw();
-      });
-      el.addEventListener('pointerdown', function(){ setActive(ch); });
-      el.addEventListener('focus', function(){ setActive(ch); });
-    });
-
-    var tg = document.querySelector('[data-tg="'+ch+'"]');
-    tg.addEventListener('click', function(){
-      state[ch].on = !state[ch].on;
-      tg.classList.toggle('on', state[ch].on);
-      tg.setAttribute('aria-pressed', String(state[ch].on));
-      chanEl(ch).classList.toggle('off', !state[ch].on);
-      setActive(ch);
-      scheduleDraw();
-    });
-
-    chanEl(ch).addEventListener('pointerdown', function(){ setActive(ch); });
-  });
-
-  /* ---------- размер точки ----------
-     Ползунок задаёт «крупность»; число ячеек по длинной стороне
-     считается по логарифму, чтобы мелкие точки менялись плавно. */
-  function cellsFromSlider(v){
-    var s = v/100;
-    var lo = Math.log(400), hi = Math.log(25);
-    return Math.round(Math.exp(lo + s*(hi - lo)));
-  }
-  function paintDotVal(){
-    cells = cellsFromSlider(parseFloat(dotSize.value));
-    dotVal.textContent = cells;
-  }
-  dotSize.addEventListener('input', function(){
-    paintDotVal();
-    scheduleDotRebuild();
-  });
-  paintDotVal();
-
-  /* ---------- перетаскивание активного слоя ---------- */
-  var dragging = false, lastX = 0, lastY = 0;
-
-  function pointFrom(e){
-    if (e.touches && e.touches[0]) return {x:e.touches[0].clientX, y:e.touches[0].clientY};
-    return {x:e.clientX, y:e.clientY};
-  }
-  function clamp(v){ return Math.max(-SLIDER_MAX, Math.min(SLIDER_MAX, v)); }
-
-  function onDown(e){
-    if (!layers) return;
-    dragging = true;
-    stage.classList.add('dragging');
-    var p = pointFrom(e);
-    lastX = p.x; lastY = p.y;
-    e.preventDefault();
-  }
-  function onMove(e){
-    if (!dragging || !layers) return;
-    var p = pointFrom(e);
-    var dx = p.x - lastX, dy = p.y - lastY;
-    lastX = p.x; lastY = p.y;
-
-    var rect = stage.getBoundingClientRect();
-    var st = state[activeCh];
-    st.x = clamp(st.x + dx * (W / rect.width));
-    st.y = clamp(st.y + dy * (H / rect.height));
-
-    sliderOf(activeCh,'x').value = st.x;
-    sliderOf(activeCh,'y').value = st.y;
-    paintValues(activeCh);
-    scheduleDraw();
-    e.preventDefault();
-  }
-  function onUp(){
-    dragging = false;
-    stage.classList.remove('dragging');
-  }
-
-  stage.addEventListener('mousedown', onDown);
-  window.addEventListener('mousemove', onMove);
-  window.addEventListener('mouseup', onUp);
-  stage.addEventListener('touchstart', onDown, {passive:false});
-  window.addEventListener('touchmove', onMove, {passive:false});
-  window.addEventListener('touchend', onUp);
-
-  /* ---------- глобальные кнопки ---------- */
-  modeBtn.addEventListener('click', function(){
-    mode = (mode === 'multiply') ? 'screen' : 'multiply';
-    modeBtn.textContent = 'режим: ' + mode;
-    rebuildSmooth();
-    if (halftoneOn) rebuildDots();
-  });
-
-  halftoneBtn.addEventListener('click', function(){
-    halftoneOn = !halftoneOn;
-    halftoneBtn.textContent = 'офсет: ' + (halftoneOn ? 'вкл' : 'выкл');
-    dotRow.classList.toggle('off', !halftoneOn);
-    rebuildDots();
-  });
-
-  resetBtn.addEventListener('click', function(){
-    CHANNELS.forEach(function(ch){
-      state[ch].x = 0;
-      state[ch].y = 0;
-      state[ch].rot = 0;
-      state[ch].on = true;
-      var tg = document.querySelector('[data-tg="'+ch+'"]');
-      tg.classList.add('on');
-      tg.setAttribute('aria-pressed','true');
-      chanEl(ch).classList.remove('off');
-      syncSliders(ch);
-    });
-    scheduleDraw();
-  });
-
-  /* ---------- загрузка ---------- */
-  function loadFile(file){
-    if (!file || !file.type || file.type.indexOf('image/') !== 0) return;
-    var url = URL.createObjectURL(file);
-    var img = new Image();
-    img.onload = function(){
-      srcImg = img;
-      fullW = img.naturalWidth;
-      fullH = img.naturalHeight;
-
-      var scale = 1;
-      if (Math.max(fullW, fullH) > MAX_PREVIEW_SIDE){
-        scale = MAX_PREVIEW_SIDE / Math.max(fullW, fullH);
-      }
-      W = Math.max(1, Math.round(fullW * scale));
-      H = Math.max(1, Math.round(fullH * scale));
-
-      layoutStage();
-      dropEl.classList.add('hidden');
-      downloadBtn.disabled = false;
-      resetBtn.click();
-      layers = null;
-      rebuildSmooth();
-      if (halftoneOn) rebuildDots();
-      URL.revokeObjectURL(url);
-    };
-    img.onerror = function(){ URL.revokeObjectURL(url); };
-    img.src = url;
-  }
-
-  dropEl.addEventListener('click', function(){ fileInput.click(); });
-  newImgBtn.addEventListener('click', function(){ fileInput.click(); });
-  fileInput.addEventListener('change', function(e){
-    if (e.target.files && e.target.files[0]) loadFile(e.target.files[0]);
-  });
-
-  stage.addEventListener('dragover', function(e){ e.preventDefault(); });
-  stage.addEventListener('drop', function(e){
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
-  });
-
-  /* ---------- экспорт ---------- */
-  downloadBtn.addEventListener('click', function(){
-    if (!srcImg || !layers) return;
-
-    var ew = fullW, eh = fullH;
-    if (Math.max(ew, eh) > MAX_EXPORT_SIDE){
-      var s2 = MAX_EXPORT_SIDE / Math.max(ew, eh);
-      ew = Math.round(ew * s2);
-      eh = Math.round(eh * s2);
     }
-    var s = ew / W;
+    return next();
+  }
 
-    var prev = layers;
-    var btnText = downloadBtn.textContent;
-    downloadBtn.disabled = true;
-    downloadBtn.textContent = 'готовлю…';
-    busy(true);
+  step().then(function(){
+    var stream = expCanvas.captureStream(0);
+    var track = stream.getVideoTracks()[0];
+    var mime = pickMime();
+    var rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8000000 });
+    var chunks = [];
+    rec.ondataavailable = function(e){ if (e.data && e.data.size) chunks.push(e.data); };
+    var stopped = new Promise(function(res){ rec.onstop = res; });
+    rec.start();
 
-    requestAnimationFrame(function(){
-      requestAnimationFrame(function(){
-        try {
-          layers = buildLayers(ew, eh, halftoneOn);
-          outCanvas.width  = ew;
-          outCanvas.height = eh;
-          renderTo(octx, ew, eh, s);
-
-          outCanvas.toBlob(function(blob){
-            if (blob){
-              var a = document.createElement('a');
-              a.download = 'cmyk-glitch.png';
-              a.href = URL.createObjectURL(blob);
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
-            }
-          }, 'image/png');
-        } finally {
-          layers = prev;
-          outCanvas.width = 0;
-          outCanvas.height = 0;
-          busy(false);
-          downloadBtn.disabled = false;
-          downloadBtn.textContent = btnText;
-          scheduleDraw();
-        }
+    var i2 = 0;
+    /* последний кадр держим полный интервал, иначе теряется хвост */
+    function push(){
+      if (i2 >= blobs.length) return Promise.resolve();
+      return createImageBitmap(blobs[i2]).then(function(bmp){
+        expCtx.drawImage(bmp, 0, 0);
+        if (bmp.close) bmp.close();
+        if (track.requestFrame) track.requestFrame();
+        i2++; labels(i2, blobs.length);
+        return sleep(1000/outFps).then(push);
       });
-    });
+    }
+    return push()
+      .then(function(){ return sleep(Math.ceil(1000/outFps) + 150); })
+      .then(function(){ rec.stop(); return stopped; })
+      .then(function(){ saveBlob(new Blob(chunks, {type:mime}), mime); });
+  }).catch(function(e){
+    toast('не получилось: ' + (e && e.message ? e.message : e));
+  }).then(function(){
+    exporting = false;
+    dlBtn.disabled = false;
+    dlBtn.textContent = oldLabel;
+    blobs.length = 0;
+    seekTo(0).then(function(){ drawPreview(); if (wasPlaying) play(); });
   });
+});
 
-  /* ---------- старт ---------- */
-  setActive('C');
-  CHANNELS.forEach(syncSliders);
+function saveBlob(blob, mime){
+  var a = document.createElement('a');
+  a.download = 'cmyk-video.' + (mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm');
+  a.href = URL.createObjectURL(blob);
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
+}
 
-  var rTimer = null;
-  window.addEventListener('resize', function(){
-    if (rTimer) clearTimeout(rTimer);
-    rTimer = setTimeout(layoutStage, 120);
-  });
+var toastT = null;
+function toast(msg){
+  stage.dataset.msg = msg;
+  stage.classList.add('busy');
+  if (toastT) clearTimeout(toastT);
+  toastT = setTimeout(function(){ stage.classList.remove('busy'); }, 3200);
+}
+
+var exporting = false;
+
+/* ---------- ресайз ---------- */
+var rT = null;
+window.addEventListener('resize', function(){
+  if (rT) clearTimeout(rT);
+  rT = setTimeout(function(){ layoutStage(); drawPreview(); }, 150);
+});
+
+/* ---------- старт ---------- */
+setActive('C');
+paintSliders(globalS);
 
 })();
 </script>
